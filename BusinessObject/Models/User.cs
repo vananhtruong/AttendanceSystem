@@ -16,7 +16,9 @@ namespace BusinessObject.Models
         public string PasswordHash { get; set; }
 
         [Required]
-        public string Role { get; set; } = "Employee"; // hoặc "Admin"
+        public string Role { get; set; } = "Employee"; 
+
+        public bool IsBanned { get; set; } = false;
 
         public ICollection<RefreshToken> RefreshTokens { get; set; }
     }

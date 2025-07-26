@@ -1,8 +1,6 @@
 ﻿using AutoMapper;
 using BusinessObject.Models;
 using BusinessObject.DTOs;
-using Microsoft.AspNetCore.Identity.Data;
-using BusinessObject.DTOs.BusinessObject.DTOs;
 
 namespace WebAPI.MappingProfiles
 {

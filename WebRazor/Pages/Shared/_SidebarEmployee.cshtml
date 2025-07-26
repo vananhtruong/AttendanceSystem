@@ -1,0 +1,190 @@
+@using Microsoft.AspNetCore.Identity
+@{
+    // Lấy thông tin user hiện tại
+    var userName = User.Claims.FirstOrDefault(c => c.Type == "name")?.Value
+        ?? User.Identity?.Name
+        ?? "Employee";
+    var userEmail = User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value
+    ?? User.Claims.FirstOrDefault(c => c.Type == "email")?.Value
+    ?? "employee@email.com";
+    var avatarUrl = "/img/profile.png"; 
+    var menuItems = new[] {
+        new { Icon = "house-door", Text = "Dashboard", Url = "/DashboardEmployee" },
+        new { Icon = "calendar-check", Text = "Work Schedule", Url = "/WorkSchedule" },
+        new { Icon = "clipboard-check", Text = "Attendance", Url = "/Attendance" },
+        new { Icon = "pencil-square", Text = "Correction Request", Url = "/CorrectionRequest" },
+        new { Icon = "bell", Text = "Notification", Url = "/Notification" },
+        new { Icon = "cash-coin", Text = "Salary", Url = "/Salary" },
+        new { Icon = "person-circle", Text = "Profile", Url = "/Account/Profile" }
+    };
+}
+<style>
+    .sidebar-employee-dark {
+        width: 240px;
+        min-width: 240px;
+        max-width: 240px;
+        background: #181c2f;
+        min-height: 100vh;
+        border-radius: 18px;
+        margin: 10px 0 10px 10px;
+        box-shadow: 0 4px 32px rgba(24,28,47,0.18);
+        transition: width 0.2s, min-width 0.2s, max-width 0.2s;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        z-index: 100;
+    }
+    .sidebar-employee-dark.collapsed {
+        width: 70px !important;
+        min-width: 70px !important;
+        max-width: 70px !important;
+    }
+    .sidebar-employee-dark .sidebar-toggle {
+        position: absolute; top: 1.2rem; right: -18px; background: #23263a; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #23263a; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; color: #fff;
+    }
+    .sidebar-employee-dark .nav-link {
+        color: #bfc9da;
+        font-size: 1.08rem;
+        border-radius: 1.2rem;
+        margin-bottom: 0.5rem;
+        padding: 0.75rem 1.2rem;
+        transition: background 0.2s, color 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        white-space: nowrap;
+        font-weight: 500;
+    }
+    .sidebar-employee-dark .nav-link.active, .sidebar-employee-dark .nav-link:hover {
+        background: #23263a;
+        color: #fff;
+        font-weight: 600;
+    }
+    .sidebar-employee-dark .nav-icon {
+        font-size: 1.5rem;
+        min-width: 28px;
+        text-align: center;
+    }
+    .sidebar-employee-dark .nav-text {
+        transition: opacity 0.2s, width 0.2s;
+    }
+    .sidebar-employee-dark.collapsed .nav-text {
+        opacity: 0;
+        width: 0;
+        overflow: hidden;
+    }
+    .sidebar-employee-dark .sidebar-logo {
+        font-size: 1.3rem;
+        color: #fff;
+        font-weight: bold;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-left: 1.2rem;
+        padding-top: 1.2rem;
+    }
+    .sidebar-employee-dark.collapsed .sidebar-logo span {
+        display: none;
+    }
+    .sidebar-employee-dark .nav.flex-column {
+        flex: 1 1 auto;
+    }
+    .sidebar-employee-dark .sidebar-user {
+        background: #23263a;
+        border-radius: 1.2rem;
+        margin: 1.5rem 1rem 1rem 1rem;
+        padding: 1.2rem 0.8rem 0.8rem 0.8rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: #bfc9da;
+        box-shadow: 0 2px 12px rgba(24,28,47,0.10);
+    }
+    .sidebar-employee-dark .sidebar-user .avatar {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 0.7rem;
+        border: 2px solid #fff2;
+    }
+    .sidebar-employee-dark .sidebar-user .user-name {
+        font-weight: 600;
+        color: #fff;
+        font-size: 1.08rem;
+        margin-bottom: 0.2rem;
+    }
+    .sidebar-employee-dark .sidebar-user .user-email {
+        font-size: 0.98rem;
+        color: #bfc9da;
+        word-break: break-all;
+        text-align: center;
+    }
+    .sidebar-employee-dark .sidebar-logout {
+        margin: 0.5rem 1rem 1.2rem 1rem;
+        padding: 0.7rem 1.2rem;
+        border-radius: 1.2rem;
+        background: #23263a;
+        color: #ff6b6b;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+        border: none;
+        width: calc(100% - 2rem);
+        justify-content: center;
+    }
+    .sidebar-employee-dark .sidebar-logout:hover {
+        background: #ff6b6b;
+        color: #fff;
+    }
+    .sidebar-employee-dark.collapsed .sidebar-user, .sidebar-employee-dark.collapsed .sidebar-logout {
+        opacity: 0;
+        width: 0;
+        height: 0;
+        overflow: hidden;
+        padding: 0;
+        margin: 0;
+    }
+</style>
+<nav id="sidebarEmployee" class="sidebar-employee-dark">
+    <div class="sidebar-logo mb-4">
+        <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="18" fill="#2563eb"/>
+            <path d="M10 26c0-4 8-4 8-8s-8-4-8-8" stroke="#fff" stroke-width="2" fill="none"/>
+            <circle cx="18" cy="10" r="2" fill="#fff"/>
+        </svg>
+        <span>AttendanceSystem</span>
+        <div class="sidebar-toggle" onclick="toggleSidebarEmployee()">
+            <i class="bi bi-list"></i>
+        </div>
+    </div>
+    <div class="nav flex-column px-2">
+        @foreach (var item in menuItems)
+        {
+            var isActive = Context.Request.Path.Value?.Equals(item.Url, StringComparison.OrdinalIgnoreCase) == true;
+            <a class="nav-link @(isActive ? "active" : "")" href="@item.Url">
+                <i class="bi bi-@item.Icon nav-icon"></i>
+                <span class="nav-text">@item.Text</span>
+            </a>
+        }
+    </div>
+    <div class="sidebar-user mt-auto">
+        <img src="@avatarUrl" alt="avatar" class="avatar" />
+        <div class="user-name">@userName</div>
+        <div class="user-email">@userEmail</div>
+    </div>
+    <button class="sidebar-logout mb-2" onclick="logout(); return false;">
+        <i class="bi bi-box-arrow-right"></i>
+        <span class="nav-text">Logout</span>
+    </button>
+</nav>
+<script>
+    function toggleSidebarEmployee() {
+        var sidebar = document.getElementById('sidebarEmployee');
+        sidebar.classList.toggle('collapsed');
+    }
+</script> 

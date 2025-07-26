@@ -1,0 +1,81 @@
+@page
+@model DashboardEmployeeModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<div class="container py-5">
+    <h2 class="fw-bold mb-5 text-primary"><i class="bi bi-house-door me-2"></i>Dashboard</h2>
+    <div class="row g-4 mb-5 justify-content-center">
+        <div class="col-md-3">
+            <div class="card text-center p-4">
+                <div class="dashboard-icon primary mb-3"><i class="bi bi-calendar-check"></i></div>
+                <div class="fw-bold fs-2">@Model.DashboardData.TotalSchedules</div>
+                <div class="text-secondary">Total schedules</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-4">
+                <div class="dashboard-icon success mb-3"><i class="bi bi-clipboard-check"></i></div>
+                <div class="fw-bold fs-2">@Model.DashboardData.CheckedIn</div>
+                <div class="text-secondary">Checked in</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-4">
+                <div class="dashboard-icon warning mb-3"><i class="bi bi-alarm"></i></div>
+                <div class="fw-bold fs-2">@Model.DashboardData.Late</div>
+                <div class="text-secondary">Late</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-4">
+                <div class="dashboard-icon danger mb-3"><i class="bi bi-x-circle"></i></div>
+                <div class="fw-bold fs-2">@Model.DashboardData.Absent</div>
+                <div class="text-secondary">Absent</div>
+            </div>
+        </div>
+    </div>
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card p-4 text-center">
+                <div class="d-flex align-items-center justify-content-center mb-2">
+                    <div class="dashboard-icon success me-3"><i class="bi bi-cash-coin"></i></div>
+                    <span class="fw-bold fs-5">This Month's Salary</span>
+                </div>
+                <div class="fs-2 fw-bold text-success">@Model.DashboardData.SalaryThisMonth.ToString("N0") VND</div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card p-4">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="dashboard-icon info me-3"><i class="bi bi-bell"></i></div>
+                    <span class="fw-bold fs-5">Latest Notifications</span>
+                </div>
+                <ul class="list-unstyled mb-0">
+                    @foreach (var n in Model.DashboardData.Notifications)
+                    {
+                        <li class="mb-2">
+                            <i class="bi bi-dot text-primary"></i>
+                            <span>@n.Message</span>
+                            <span class="text-secondary small ms-2">(@n.CreatedAt.ToString("dd/MM/yyyy"))</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+<script>
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+        localStorage.setItem('accessToken', token);
+        // Xóa token khỏi URL để bảo mật
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+})();
+</script>
+} 
