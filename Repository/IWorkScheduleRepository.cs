@@ -17,5 +17,8 @@ namespace Repository
         Task DeleteAsync(int id);
         Task<List<WorkSchedule>> GetOvertimeSchedulesAsync(int userId);
         Task UpdateAttendanceStatusAsync(int scheduleId, string status);
+        Task AddRangeAsync(List<WorkSchedule> schedules);
+        Task<bool> ExistsAsync(int userId, DateTime workDate, int workShiftId);
+
     }
 }

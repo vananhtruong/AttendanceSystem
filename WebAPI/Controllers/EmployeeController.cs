@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Repository;
 using AutoMapper;
 using BusinessObject.DTOs;
+using Microsoft.AspNetCore.OData.Query;
 
 namespace WebAPI.Controllers
 {
@@ -22,6 +23,7 @@ namespace WebAPI.Controllers
 
         // GET: api/Employee
         [HttpGet]
+        [EnableQuery]
         public async Task<IActionResult> GetAllEmployees()
         {
             var employees = await _userRepo.GetAllAsync();
