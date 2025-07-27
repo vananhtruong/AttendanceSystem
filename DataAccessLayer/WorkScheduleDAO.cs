@@ -73,5 +73,18 @@ namespace DataAccessLayer
                 await _context.SaveChangesAsync();
             }
         }
+        public async Task AddRangeAsync(List<WorkSchedule> schedules)
+        {
+            await _context.WorkSchedules.AddRangeAsync(schedules);
+            await _context.SaveChangesAsync();
+        }
+        public async Task<bool> ExistsAsync(int userId, DateTime workDate, int workShiftId)
+        {
+            return await _context.WorkSchedules
+                .AnyAsync(ws => ws.UserId == userId
+                             && ws.WorkDate.Date == workDate.Date
+                             && ws.WorkShiftId == workShiftId);
+        }
+
     }
 }
