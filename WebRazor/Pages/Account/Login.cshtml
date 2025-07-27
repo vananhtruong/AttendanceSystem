@@ -1,0 +1,53 @@
+@page
+@model LoginModel
+@{
+    ViewData["Title"] = "Login";
+}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+<style>
+    body { background: linear-gradient(135deg, #f6f8fa, #e0e7ff); min-height: 100vh; }
+    .login-card {
+        max-width: 400px; margin: 5% auto; border-radius: 1.5rem;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+        background: #fff; padding: 2.5rem 2rem;
+    }
+    .logo-circle {
+        width: 60px; height: 60px; background: #2563eb;
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 1rem auto;
+    }
+    .logo-circle svg { width: 36px; height: 36px; }
+    .form-control, .btn { border-radius: 1rem; }
+    .btn-main { background: #2563eb; color: #fff; }
+    .btn-main:hover { background: #1e40af; color: #fff; }
+</style>
+<div class="login-card">
+    <div class="logo-circle mb-3">
+        <!-- SVG logo -->
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="18" fill="#2563eb"/>
+            <path d="M10 26c0-4 8-4 8-8s-8-4-8-8" stroke="#fff" stroke-width="2" fill="none"/>
+            <circle cx="18" cy="10" r="2" fill="#fff"/>
+        </svg>
+    </div>
+    <h3 class="text-center fw-bold mb-4" style="color:#2563eb;">AttendanceSystem</h3>
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    <form method="post">
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input asp-for="Email" class="form-control form-control-lg" required autofocus />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input asp-for="Password" class="form-control form-control-lg" type="password" required />
+        </div>
+        <button type="submit" class="btn btn-main btn-lg w-100 mt-2">Login</button>
+    </form>
+    <div class="text-center mt-3">
+        <a href="/Account/Register" class="text-decoration-none text-secondary">Don't have an account? Register</a>
+    </div>
+</div> 

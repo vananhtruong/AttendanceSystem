@@ -6,6 +6,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using BusinessObject;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.OData;
+using Microsoft.OData.ModelBuilder;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,9 +16,19 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<MyDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddControllers()
+    .AddOData(opt =>
+    {
+        var odataBuilder = new ODataConventionModelBuilder();
+        odataBuilder.EntitySet<User>("Users");
+        opt.AddRouteComponents("odata", odataBuilder.GetEdmModel())
+            .Select().Filter().OrderBy().Expand().SetMaxTop(100).Count().SkipToken();
+    });
+
 // Data Access Layer
 builder.Services.AddScoped<UserDAO>();
 builder.Services.AddScoped<AttendanceRecordDAO>();
+builder.Services.AddScoped<WorkScheduleDAO>();
 
 // Repository Layer
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -24,6 +36,14 @@ builder.Services.AddScoped<IAttendanceRecordRepository, AttendanceRecordReposito
 
 // Services
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IWorkScheduleRepository, WorkScheduleRepository>();
+builder.Services.AddScoped<NotificationDAO>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<SalaryDAO>();
+builder.Services.AddScoped<ISalaryRepository, SalaryRepository>();
+//builder.Services.AddScoped<CorrectionRequestDAO>();
+//builder.Services.AddScoped<ICorrectionRequestRepository>();
+
 builder.Services.AddScoped<IFaceRecognitionService, FaceRecognitionService>();
 
 
@@ -48,9 +68,32 @@ builder.Services.AddAuthentication("Bearer")
 
 
 
-builder.Services.AddControllers();
+// OData EDM Model
+var odataBuilder = new ODataConventionModelBuilder();
+odataBuilder.EntitySet<User>("Users");
+odataBuilder.EntitySet<AttendanceRecord>("AttendanceRecords");
+odataBuilder.EntitySet<WorkSchedule>("WorkSchedules");
+odataBuilder.EntitySet<SalaryRecord>("SalaryRecords");
+odataBuilder.EntitySet<CorrectionRequest>("CorrectionRequests");
+odataBuilder.EntitySet<Notification>("Notifications");
+
+//builder.Services.AddControllers()
+//    .AddOData(opt =>
+//        opt.AddRouteComponents("odata", odataBuilder.GetEdmModel())
+//            .Select().Filter().OrderBy().Expand().Count().SetMaxTop(100));
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowRazor",
+        policy =>
+        {
+            policy.WithOrigins("https://localhost:7192")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
 
 builder.Services.AddSwaggerGen(option =>
 {
@@ -90,7 +133,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors("AllowRazor");
 app.UseAuthentication();
 app.UseAuthorization();
 

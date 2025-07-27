@@ -65,10 +65,10 @@ namespace WebAPI.Controllers
             await _userRepo.UpdateAsync(user);
 
             return Ok(new AuthResponse
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken
-            });
+  {
+      AccessToken = accessToken,
+      RefreshToken = refreshToken
+  });
         }
 
 
@@ -131,6 +131,20 @@ namespace WebAPI.Controllers
 
             var dto = _mapper.Map<UserDTO>(user);
             return Ok(dto);
+        }
+
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            if (string.IsNullOrEmpty(email)) return Unauthorized();
+            var user = await _userRepo.GetByEmailAsync(email);
+            if (user == null) return NotFound();
+            // Xóa hết refresh token của user
+            user.RefreshTokens.Clear();
+            await _userRepo.UpdateAsync();
+            return Ok();
         }
 
         [Authorize(Roles = "Admin")]

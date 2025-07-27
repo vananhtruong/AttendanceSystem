@@ -1,0 +1,57 @@
+@page
+@model SalaryAdminIndexModel
+@{
+    ViewData["Title"] = "Salary Management";
+}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<div class="container py-4">
+    <h2 class="fw-bold mb-4"><i class="bi bi-cash-coin me-2"></i>Salary Management</h2>
+    <div class="mb-4">
+        <form method="post" asp-page-handler="Calculate" class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <input type="number" name="UserId" class="form-control form-control-lg" placeholder="Enter employee ID to calculate salary..." required />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-main btn-lg w-100"><i class="bi bi-calculator me-1"></i> Calculate Salary</button>
+            </div>
+        </form>
+    </div>
+    <div class="card p-4">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Employee</th>
+                    <th>Month</th>
+                    <th>Total Hours</th>
+                    <th>Overtime</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Paid Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.SalaryRecords)
+                {
+                    <tr>
+                        <td>@item.UserFullName</td>
+                        <td>@item.Month.ToString("MM/yyyy")</td>
+                        <td>@item.TotalHoursWorked</td>
+                        <td>@item.OvertimeHours</td>
+                        <td class="fw-bold text-success">@item.Amount.ToString("N0") VND</td>
+                        <td>
+                            @if (item.IsPaid)
+                            {
+                                <span class="badge bg-success">Paid</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">Unpaid</span>
+                            }
+                        </td>
+                        <td>@item.PaidDate?.ToString("dd/MM/yyyy") ?? "--"</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div> 

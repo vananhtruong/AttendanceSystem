@@ -1,0 +1,118 @@
+@page
+@model WorkScheduleIndexModel
+@functions {
+    string GetStatusLabel(string status)
+    {
+        return status switch
+        {
+            "OnTime" => "attended",
+            "Late" => "late",
+            "Absent" => "absent",
+            _ => "not yet"
+        };
+    }
+}
+@{
+    ViewData["Title"] = "My Work Schedules";
+    var daysOfWeek = Enumerable.Range(0, 7).Select(i => Model.WeekStart.AddDays(i)).ToList();
+    // Lấy danh sách các ca thực tế trong tuần (ShiftName)
+    var caNames = Model.WorkSchedules.Select(x => x.ShiftName).Distinct().OrderBy(x => x).ToList();
+    // Map: (ca, ngày) -> WorkSchedule
+    var scheduleMap = Model.WorkSchedules.ToDictionary(x => (x.ShiftName, x.WorkDate.Date), x => x);
+}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    .schedule-table { background: #fff; border-radius: 1.2rem; box-shadow: 0 4px 24px rgba(24,28,47,0.08); overflow: hidden; }
+    .schedule-table th, .schedule-table td { text-align: center; vertical-align: middle; padding: 0.7rem 0.3rem; }
+    .schedule-slot { font-weight: 600; color: #2563eb; }
+    .badge-status { border-radius: 1rem; font-size: 1rem; padding: 0.4em 1.2em; }
+    .badge-ontime { background: #d1fae5; color: #065f46; }
+    .badge-late { background: #fef9c3; color: #92400e; }
+    .badge-absent { background: #fee2e2; color: #991b1b; }
+    .badge-pending { background: #e0e7ef; color: #3730a3; }
+    .schedule-cell { cursor: pointer; transition: box-shadow 0.2s; border-radius: 0.7rem; }
+    .schedule-cell:hover { box-shadow: 0 2px 12px #2563eb22; background: #f0f4ff; }
+    .legend-badge { font-size: 1rem; margin-right: 0.5rem; }
+</style>
+<div class="container py-4">
+    <h2 class="fw-bold mb-4"><i class="bi bi-calendar-check me-2"></i>My Work Schedules</h2>
+    <form method="get" class="d-flex align-items-center gap-3 mb-3">
+        <label class="fw-bold">Week:</label>
+        <input type="week" class="form-control" style="max-width:180px;" name="SelectedWeek" value="@Model.SelectedWeekString" onchange="this.form.submit()" />
+        <span class="text-secondary">(@Model.WeekRangeString)</span>
+    </form>
+    <div class="table-responsive">
+        <table class="table schedule-table">
+            <thead class="table-light">
+                <tr>
+                    <th>Ca</th>
+                    @foreach (var day in daysOfWeek)
+                    {
+                        <th>@day.ToString("ddd")<br />@day.ToString("dd/MM")</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ca in caNames)
+                {
+                    <tr>
+                        <td class="schedule-slot">@ca</td>
+                        @foreach (var day in daysOfWeek)
+                        {
+                            <td>
+                                @if (scheduleMap.TryGetValue((ca, day.Date), out var sch))
+                                {
+                                    var label = GetStatusLabel(sch.AttendanceStatus);
+                                    <div class="schedule-cell p-2" data-bs-toggle="modal" data-bs-target="#scheduleDetailModal" onclick="showScheduleDetail(@sch.WorkScheduleId)">
+                                        <span class="badge badge-status @(label == "attended" ? "badge-ontime" : label == "late" ? "badge-late" : label == "absent" ? "badge-absent" : "badge-pending")">
+                                            @label
+                                        </span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="mt-4">
+        <span class="legend-badge badge badge-ontime">attended</span> Đã chấm công &nbsp;
+        <span class="legend-badge badge badge-late">late</span> Đi muộn &nbsp;
+        <span class="legend-badge badge badge-absent">absent</span> Vắng mặt &nbsp;
+        <span class="legend-badge badge badge-pending">not yet</span> Chưa chấm công
+    </div>
+</div>
+<!-- Modal chi tiết ca làm -->
+<div class="modal fade" id="scheduleDetailModal" tabindex="-1" aria-labelledby="scheduleDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="scheduleDetailModalLabel">Work Schedule Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="scheduleDetailBody">
+        <!-- Nội dung chi tiết sẽ được load bằng JS -->
+      </div>
+    </div>
+  </div>
+</div>
+@section Scripts {
+<script>
+    async function showScheduleDetail(scheduleId) {
+        const schedules = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WorkSchedules));
+        const sch = schedules.find(x => x.WorkScheduleId === scheduleId);
+        if (!sch) return;
+            let html = `<div><b>Shift:</b> ${sch.ShiftName}</div>
+            <div><b>Date:</b> ${new Date(sch.WorkDate).toLocaleString()}</div>
+            <div><b>Status:</b> <span class='badge badge-status ${sch.AttendanceStatus === 'OnTime' ? 'badge-ontime' : sch.AttendanceStatus === 'Late' ? 'badge-late' : sch.AttendanceStatus === 'Absent' ? 'badge-absent' : 'badge-pending'}'>${sch.AttendanceStatus}</span></div>
+            <div><b>Check-in:</b> ${sch.CheckInTime ? new Date(sch.CheckInTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : '--'}</div>
+            <div><b>Check-out:</b> ${sch.CheckOutTime ? new Date(sch.CheckOutTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : '--'}</div>`;
+        document.getElementById('scheduleDetailBody').innerHTML = html;
+    }
+</script>
+}

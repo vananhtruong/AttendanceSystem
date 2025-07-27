@@ -1,0 +1,66 @@
+@page
+@model DashboardAdminModel
+@{
+    ViewData["Title"] = "Admin Dashboard";
+}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<div class="container py-5">
+    <h2 class="fw-bold mb-5 text-primary"><i class="bi bi-speedometer2 me-2"></i>Admin Dashboard</h2>
+    <div class="row g-4 mb-5 justify-content-center">
+        <div class="col-md-3">
+            <div class="card text-center p-4">
+                <div class="dashboard-icon primary mb-3"><i class="bi bi-people"></i></div>
+                <div class="fw-bold fs-2">@Model.TotalEmployees</div>
+                <div class="text-secondary">Employees</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-4">
+                <div class="dashboard-icon primary mb-3"><i class="bi bi-calendar-check"></i></div>
+                <div class="fw-bold fs-2">@Model.TotalSchedules</div>
+                <div class="text-secondary">Work Schedules</div>
+            </div>
+        </div>
+        @* <div class="col-md-3">
+            <div class="card text-center p-4">
+                <div class="dashboard-icon warning mb-3"><i class="bi bi-clipboard-check"></i></div>
+                <div class="fw-bold fs-2">@Model.PendingRequests</div>
+                <div class="text-secondary">Pending Correction Requests</div>
+            </div>
+        </div> *@
+        @* <div class="col-md-3">
+            <div class="card text-center p-4">
+                <div class="dashboard-icon success mb-3"><i class="bi bi-cash-coin"></i></div>
+                <div class="fw-bold fs-2">@Model.TotalSalaryThisMonth.ToString("N0") VND</div>
+                <div class="text-secondary">Total Salary This Month</div>
+            </div>
+        </div> *@
+    </div>
+    <div class="row g-4 justify-content-center">
+        <div class="col-md-3">
+            <a href="/Employee" class="btn btn-main w-100 py-3"><i class="bi bi-people me-2"></i>Manage Employees</a>
+        </div>
+        <div class="col-md-3">
+            <a href="/WorkSchedule/AdminIndex" class="btn btn-main w-100 py-3"><i class="bi bi-calendar-check me-2"></i>Manage Schedules</a>
+        </div>
+        <div class="col-md-3">
+            <a href="/Attendance/AdminIndex" class="btn btn-main w-100 py-3"><i class="bi bi-clipboard-check me-2"></i>Manage Attendance</a>
+        </div>
+        <div class="col-md-3">
+            <a href="/CorrectionRequest/AdminIndex" class="btn btn-main w-100 py-3"><i class="bi bi-pencil-square me-2"></i>Correction Requests</a>
+        </div>
+    </div>
+</div>
+@section Scripts {
+<script>
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+        localStorage.setItem('accessToken', token);
+        // Xóa token khỏi URL để bảo mật
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+})();
+</script>
+} 

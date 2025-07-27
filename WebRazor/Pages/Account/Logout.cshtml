@@ -1,0 +1,21 @@
+@page
+@model WebRazor.Pages.Account.LogoutModel
+@{
+    Layout = null;
+}
+<script>
+(async function() {
+    try {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+            await fetch('/api/Account/logout', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+        }
+    } catch (e) { /* ignore */ }
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = '/Account/Login';
+})();
+</script> 

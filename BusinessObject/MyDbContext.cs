@@ -12,6 +12,11 @@ namespace BusinessObject
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
         public DbSet<CorrectionRequest> CorrectionRequests { get; set; }
+        public DbSet<WorkShift> WorkShifts { get; set; }
+        public DbSet<WorkSchedule> WorkSchedules { get; set; }
+        public DbSet<SalaryRecord> salaryRecords { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
@@ -22,27 +27,39 @@ namespace BusinessObject
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Xóa RefreshToken nếu User bị xóa
+            // Fix decimal warnings
+            modelBuilder.Entity<SalaryRecord>(entity =>
+            {
+                entity.Property(e => e.Amount).HasPrecision(18, 2);
+                entity.Property(e => e.TotalHoursWorked).HasPrecision(5, 2);
+                entity.Property(e => e.OvertimeHours).HasPrecision(5, 2);
+            });
+
+            // Cascade delete khi xóa User => xóa token
             modelBuilder.Entity<RefreshToken>()
                 .HasOne(rt => rt.User)
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(rt => rt.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            // AttendanceRecord relationship
+                
             modelBuilder.Entity<AttendanceRecord>()
                 .HasOne(ar => ar.User)
-                .WithMany(u => u.Attendances)
+                .WithMany()
                 .HasForeignKey(ar => ar.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
-            // CorrectionRequest relationship
             modelBuilder.Entity<CorrectionRequest>()
                 .HasOne(cr => cr.User)
                 .WithMany()
                 .HasForeignKey(cr => cr.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Notification: Cascade delete khi xóa User => xóa Notification
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

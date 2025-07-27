@@ -3,6 +3,8 @@
     public class CorrectionRequest
     {
         public int Id { get; set; }
+        //public int AttendanceRecordId { get; set; }
+        //public AttendanceRecord AttendanceRecord { get; set; }
 
         public int UserId { get; set; }
         public User User { get; set; }
@@ -12,5 +14,8 @@
         public string Reason { get; set; }
 
         public string Status { get; set; } // "Pending", "Approved", "Rejected"
+
+        public int? AttendanceRecordId { get; set; }
+        public AttendanceRecord AttendanceRecord { get; set; }
     }
 }
