@@ -47,7 +47,7 @@ builder.Services.AddScoped<ISalaryRepository, SalaryRepository>();
 builder.Services.AddScoped<CorrectionRequestDAO>();
 builder.Services.AddScoped<ICorrectionRequestRepository, CorrectionRequestRepository>();
 
-builder.Services.AddScoped<IFaceRecognitionService, FaceRecognitionService>();
+//builder.Services.AddScoped<IFaceRecognitionService, FaceRecognitionService>();
 
 
 builder.Services.AddAutoMapper(typeof(WebAPI.MappingProfiles.UserProfile));

@@ -10,7 +10,7 @@ namespace Repository
         Task<List<AttendanceRecord>> GetByUserIdAsync(int userId);
         Task<List<AttendanceRecord>> GetAllAsync();
         Task<List<AttendanceRecord>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
-        Task<AttendanceRecord?> GetByUserIdAndDateAsync(int userId, DateTime date);
+        Task<AttendanceRecord?> GetByUserIdAndDateAsync(int userId, DateTime date, string type);
         Task DeleteAsync(int id);
     }
 } 

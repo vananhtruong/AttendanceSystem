@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BusinessObject;
+﻿using BusinessObject;
 using BusinessObject.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -56,19 +51,22 @@ namespace DataAccessLayer
             }
         }
 
-        // Tính lương tự động dựa vào AttendanceRecord (giả sử đã có bảng AttendanceRecord)
+        // Tính lương tự động dựa vào AttendanceRecord
         public async Task<SalaryRecord> CalculateSalaryAsync(int userId, DateTime month)
         {
             // Lấy dữ liệu chấm công của user trong tháng
             var attendances = await _context.AttendanceRecords
-                .Where(a => a.UserId == userId && a.Date.Month == month.Month && a.Date.Year == month.Year)
+                .Where(a => a.UserId == userId
+                            && a.RecordTime.Month == month.Month
+                            && a.RecordTime.Year == month.Year
+                            && a.Type == "CheckOut") // chỉ lấy bản ghi checkout
                 .ToListAsync();
 
-            decimal totalHours = attendances.Sum(a =>
-                a.CheckOutTime.HasValue ? (decimal)(a.CheckOutTime.Value - a.CheckInTime).TotalHours : 0);
-            // Nếu chưa có overtime, để 0
-            decimal overtime = 0;
-            decimal baseSalary = 20000; // ví dụ, lấy từ user hoặc config
+            // Tổng giờ làm dựa vào HoursWorked (đã tính khi checkout)
+            decimal totalHours = attendances.Sum(a => a.HoursWorked);
+            decimal overtime = attendances.Sum(a => a.OvertimeHours);
+
+            decimal baseSalary = 20000; // ví dụ, lương giờ
             decimal overtimeRate = 1.5m;
             decimal amount = baseSalary * totalHours + overtime * baseSalary * overtimeRate;
 
