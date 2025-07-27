@@ -31,10 +31,12 @@ builder.Services.AddControllers()
 builder.Services.AddScoped<UserDAO>();
 builder.Services.AddScoped<AttendanceRecordDAO>();
 builder.Services.AddScoped<WorkScheduleDAO>();
+builder.Services.AddScoped<WorkShiftDAO>();
 
 // Repository Layer
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAttendanceRecordRepository, AttendanceRecordRepository>();
+builder.Services.AddScoped<IWorkShiftRepository, WorkShiftRepository>();
 
 // Services
 builder.Services.AddScoped<ITokenService, TokenService>();

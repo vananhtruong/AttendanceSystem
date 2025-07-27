@@ -34,6 +34,11 @@ namespace Repository
             => _workScheduleDAO.GetOvertimeSchedulesAsync(userId);
         public Task UpdateAttendanceStatusAsync(int scheduleId, string status)
             => _workScheduleDAO.UpdateAttendanceStatusAsync(scheduleId, status);
+        public Task AddRangeAsync(List<WorkSchedule> schedules)
+            => _workScheduleDAO.AddRangeAsync(schedules);
+        public Task<bool> ExistsAsync(int userId, DateTime workDate, int workShiftId)
+            => _workScheduleDAO.ExistsAsync(userId, workDate, workShiftId);
+
 
     }
 }
