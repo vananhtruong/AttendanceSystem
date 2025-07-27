@@ -89,18 +89,37 @@ namespace WebAPI.Controllers
         {
             var schedules = await _workScheduleRepo.GetByUserIdAsync(userId);
             var attendanceRecords = await _attendanceRecordRepository.GetByUserIdAsync(userId);
-            var result = schedules.Select(s => {
-                var attendance = attendanceRecords.FirstOrDefault(a => a.WorkScheduleId == s.Id);
+
+            var result = schedules.Select(s =>
+            {
                 var shift = s.WorkShift;
-                string status;
-                if (attendance == null)
-                    status = "Absent";
-                else if (attendance.CheckInTime > s.WorkDate.Date.Add(shift.StartTime))
-                    status = "Late";
-                else if (attendance.CheckInTime <= s.WorkDate.Date.Add(shift.StartTime) && attendance.CheckOutTime >= s.WorkDate.Date.Add(shift.EndTime))
-                    status = "OnTime";
+                var checkIn = attendanceRecords
+                    .Where(a => a.WorkScheduleId == s.Id && a.Type == "CheckIn")
+                    .OrderBy(a => a.RecordTime)
+                    .FirstOrDefault();
+                var checkOut = attendanceRecords
+                    .Where(a => a.WorkScheduleId == s.Id && a.Type == "CheckOut")
+                    .OrderByDescending(a => a.RecordTime)
+                    .FirstOrDefault();
+
+                string attendanceStatus;
+                if (checkIn == null)
+                {
+                    attendanceStatus = "Absent";
+                }
+                else if (checkIn.RecordTime > s.WorkDate.Date.Add(shift.StartTime))
+                {
+                    attendanceStatus = "Late";
+                }
+                else if (checkIn.RecordTime <= s.WorkDate.Date.Add(shift.StartTime) && checkOut != null && checkOut.RecordTime >= s.WorkDate.Date.Add(shift.EndTime))
+                {
+                    attendanceStatus = "OnTime";
+                }
                 else
-                    status = "not yet";
+                {
+                    attendanceStatus = "NotYet";
+                }
+
                 return new WorkScheduleWithAttendanceDTO
                 {
                     WorkScheduleId = s.Id,
@@ -108,13 +127,15 @@ namespace WebAPI.Controllers
                     ShiftName = shift.Name,
                     IsOvertime = shift.IsOvertime,
                     ScheduleStatus = s.Status,
-                    AttendanceStatus = status,
-                    CheckInTime = attendance?.CheckInTime,
-                    CheckOutTime = attendance?.CheckOutTime
+                    AttendanceStatus = attendanceStatus,
+                    CheckInTime = checkIn?.RecordTime,
+                    CheckOutTime = checkOut?.RecordTime
                 };
             }).OrderBy(x => x.WorkDate).ToList();
+
             return Ok(result);
         }
+
         [HttpGet("count")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetWorkScheduleCount()
@@ -124,4 +145,4 @@ namespace WebAPI.Controllers
             return Ok(count);
         }
     }
-} 
+}

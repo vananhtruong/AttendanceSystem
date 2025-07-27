@@ -16,7 +16,7 @@ namespace Repository
         public Task<List<AttendanceRecord>> GetByUserIdAsync(int userId) => _dao.GetByUserIdAsync(userId);
         public Task<List<AttendanceRecord>> GetAllAsync() => _dao.GetAllAsync();
         public Task<List<AttendanceRecord>> GetByDateRangeAsync(DateTime startDate, DateTime endDate) => _dao.GetByDateRangeAsync(startDate, endDate);
-        public Task<AttendanceRecord?> GetByUserIdAndDateAsync(int userId, DateTime date) => _dao.GetByUserIdAndDateAsync(userId, date);
+        public Task<AttendanceRecord?> GetByUserIdAndDateAsync(int userId, DateTime date, string type) => _dao.GetByUserIdAndDateAsync(userId,date,type);
         public Task DeleteAsync(int id) => _dao.DeleteAsync(id);
     }
 } 
