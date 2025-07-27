@@ -17,19 +17,10 @@ namespace Repository
 
         public Task<User?> GetByIdAsync(int id)
             => _userDao.GetByIdAsync(id);
-
-        public Task<List<User>> GetAllAsync()
-            => _userDao.GetAllAsync();
-
+            
         public Task<List<User>> SearchAsync(string keyword)
-            => _userDao.SearchAsync(keyword);
-
-        public Task AddAsync(User user)
-            => _userDao.AddAsync(user);
-
-        public Task UpdateAsync()
-            => _userDao.UpdateAsync();
-
+        => _userDao.SearchAsync(keyword);
+        
         public Task UpdateUserAsync(User user)
             => _userDao.UpdateUserAsync(user);
 
@@ -38,5 +29,14 @@ namespace Repository
 
         public Task SetRoleAsync(int userId, string role)
             => _userDao.SetRoleAsync(userId, role);
+            
+        public Task<List<User>> GetAllAsync()
+            => _userDao.GetAllAsync();
+            
+        public Task AddAsync(User user)
+        => _userDao.AddAsync(user);
+        
+        public Task UpdateAsync()
+            => _userDao.UpdateAsync();    
     }
 }

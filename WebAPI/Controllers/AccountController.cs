@@ -40,8 +40,6 @@ namespace WebAPI.Controllers
                 Role = "Employee"
             };
 
-            user.PasswordHash = HashPassword(request.Password);
-
             await _userRepo.AddAsync(user);
 
             return Ok("Registered successfully");
@@ -64,7 +62,7 @@ namespace WebAPI.Controllers
                 ExpiryDate = DateTime.UtcNow.AddDays(refreshDays)
             });
 
-            await _userRepo.UpdateAsync();
+            await _userRepo.UpdateAsync(user);
 
             return Ok(new AuthResponse
   {
@@ -99,7 +97,7 @@ namespace WebAPI.Controllers
                 ExpiryDate = DateTime.UtcNow.AddDays(refreshDays)
             });
 
-            await _userRepo.UpdateAsync();
+            await _userRepo.UpdateAsync(user);
 
             var newAccess = _tokenService.GenerateAccessToken(user);
             return Ok(new AuthResponse
@@ -123,7 +121,7 @@ namespace WebAPI.Controllers
         [Authorize(Roles = "Employee")]
         public async Task<IActionResult> GetCurrentUser()
         {
-            var email = User.FindFirstValue(ClaimTypes.Email); // lấy từ AccessToken
+            var email = User.FindFirstValue(ClaimTypes.Email);
 
             if (string.IsNullOrEmpty(email))
                 return Unauthorized("Invalid token");
@@ -131,14 +129,7 @@ namespace WebAPI.Controllers
             var user = await _userRepo.GetByEmailAsync(email);
             if (user == null) return NotFound();
 
-            var dto = new UserDTO
-            {
-                Id = user.Id,
-                FullName = user.FullName,
-                Email = user.Email,
-                Role = user.Role
-            };
-
+            var dto = _mapper.Map<UserDTO>(user);
             return Ok(dto);
         }
 

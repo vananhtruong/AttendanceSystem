@@ -4,6 +4,7 @@ using Repository;
 using BusinessObject.Models;
 using AutoMapper;
 using BusinessObject.DTOs;
+using System.Security.Claims;
 
 namespace WebAPI.Controllers
 {
@@ -94,6 +95,7 @@ namespace WebAPI.Controllers
             record.Status = status;
             await _attendanceRepo.UpdateAsync(record);
             return Ok();
+
         }
     }
 } 

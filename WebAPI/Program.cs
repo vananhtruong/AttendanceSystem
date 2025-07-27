@@ -8,7 +8,7 @@ using BusinessObject;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.OData;
 using Microsoft.OData.ModelBuilder;
-using BusinessObject.Models;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,13 +25,18 @@ builder.Services.AddControllers()
             .Select().Filter().OrderBy().Expand().SetMaxTop(100).Count().SkipToken();
     });
 
+// Data Access Layer
 builder.Services.AddScoped<UserDAO>();
+builder.Services.AddScoped<AttendanceRecordDAO>();
 builder.Services.AddScoped<WorkScheduleDAO>();
+
+// Repository Layer
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAttendanceRecordRepository, AttendanceRecordRepository>();
+
+// Services
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IWorkScheduleRepository, WorkScheduleRepository>();
-builder.Services.AddScoped<AttendanceRecordDAO>();
-builder.Services.AddScoped<IAttendanceRecordRepository, AttendanceRecordRepository>();
 builder.Services.AddScoped<NotificationDAO>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<SalaryDAO>();
@@ -39,6 +44,7 @@ builder.Services.AddScoped<ISalaryRepository, SalaryRepository>();
 //builder.Services.AddScoped<CorrectionRequestDAO>();
 //builder.Services.AddScoped<ICorrectionRequestRepository>();
 
+builder.Services.AddScoped<IFaceRecognitionService, FaceRecognitionService>();
 
 
 builder.Services.AddAutoMapper(typeof(WebAPI.MappingProfiles.UserProfile));
@@ -77,7 +83,7 @@ odataBuilder.EntitySet<Notification>("Notifications");
 //            .Select().Filter().OrderBy().Expand().Count().SetMaxTop(100));
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowRazor",
@@ -88,6 +94,33 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod()
                   .AllowCredentials();
         });
+
+builder.Services.AddSwaggerGen(option =>
+{
+    option.SwaggerDoc("v1", new OpenApiInfo { Title = "Demo API", Version = "v1" });
+    option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Please enter a valid token",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        BearerFormat = "JWT",
+        Scheme = "Bearer"
+    });
+    option.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type=ReferenceType.SecurityScheme,
+                    Id="Bearer"
+                }
+            },
+            new string[]{}
+        }
+    });
 });
 
 var app = builder.Build();

@@ -1,16 +1,16 @@
 using BusinessObject.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Repository
 {
     public interface IAttendanceRecordRepository
     {
         Task<AttendanceRecord?> GetByIdAsync(int id);
-        Task<List<AttendanceRecord>> GetByUserIdAsync(int userId);
-        Task<List<AttendanceRecord>> GetAllAsync();
         Task AddAsync(AttendanceRecord record);
         Task UpdateAsync(AttendanceRecord record);
+        Task<List<AttendanceRecord>> GetByUserIdAsync(int userId);
+        Task<List<AttendanceRecord>> GetAllAsync();
+        Task<List<AttendanceRecord>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
+        Task<AttendanceRecord?> GetByUserIdAndDateAsync(int userId, DateTime date);
         Task DeleteAsync(int id);
     }
 } 

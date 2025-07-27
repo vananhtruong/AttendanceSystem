@@ -20,6 +20,9 @@ namespace BusinessObject.Models
 
         public bool IsBanned { get; set; } = false;
 
-        public ICollection<RefreshToken> RefreshTokens { get; set; }
+        public string? FaceDescriptorJson { get; set; }
+
+        public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+        public ICollection<AttendanceRecord> Attendances { get; set; } = new List<AttendanceRecord>();
     }
 }

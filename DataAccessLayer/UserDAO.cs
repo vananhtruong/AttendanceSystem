@@ -31,8 +31,16 @@ namespace DataAccessLayer
             return await _context.Users.ToListAsync();
         }
 
-        public async Task UpdateAsync()
+        public async Task<User?> GetByIdAsync(int id)
         {
+            return await _context.Users
+                .Include(u => u.RefreshTokens)
+                .FirstOrDefaultAsync(u => u.Id == id);
+        }
+
+        public async Task UpdateAsync(User user)
+        {
+            _context.Users.Update(user);
             await _context.SaveChangesAsync();
         }
 

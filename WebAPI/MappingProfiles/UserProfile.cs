@@ -9,7 +9,7 @@ namespace WebAPI.MappingProfiles
         public UserProfile()
         {
             CreateMap<User, UserDTO>();
-            CreateMap<BusinessObject.DTOs.RegisterRequest, User>()
+            CreateMap<RegisterRequest, User>()
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore());
         }
     }

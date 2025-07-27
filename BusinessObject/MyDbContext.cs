@@ -18,7 +18,12 @@ namespace BusinessObject
         public DbSet<Notification> Notifications { get; set; }
         
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Server=localhost,49898;Database=AttendanceSystem;Trusted_Connection=True;TrustServerCertificate=True");
+        {
+            if (!optionsBuilder.IsConfigured)
+            {
+                optionsBuilder.UseSqlServer("Server=(local);Database=AttendanceSystem;Trusted_Connection=True;TrustServerCertificate=True");
+            }
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -36,20 +41,18 @@ namespace BusinessObject
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(rt => rt.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            // Xóa user => AttendanceRecord vẫn giữ, không xóa
+                
             modelBuilder.Entity<AttendanceRecord>()
                 .HasOne(ar => ar.User)
                 .WithMany()
                 .HasForeignKey(ar => ar.UserId)
-                .OnDelete(DeleteBehavior.NoAction); // 👈 QUAN TRỌNG
+                .OnDelete(DeleteBehavior.NoAction);
 
-            // Xóa user => CorrectionRequest vẫn giữ, không xóa
             modelBuilder.Entity<CorrectionRequest>()
                 .HasOne(cr => cr.User)
                 .WithMany()
                 .HasForeignKey(cr => cr.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Notification: Cascade delete khi xóa User => xóa Notification
             modelBuilder.Entity<Notification>()
@@ -58,6 +61,5 @@ namespace BusinessObject
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
-
     }
 }

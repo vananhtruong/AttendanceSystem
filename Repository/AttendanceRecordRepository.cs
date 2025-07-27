@@ -1,30 +1,22 @@
 using BusinessObject.Models;
 using DataAccessLayer;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Repository
 {
     public class AttendanceRecordRepository : IAttendanceRecordRepository
     {
-        private readonly AttendanceRecordDAO _attendanceRecordDAO;
-
-        public AttendanceRecordRepository(AttendanceRecordDAO attendanceRecordDAO)
+        private readonly AttendanceRecordDAO _dao;
+        public AttendanceRecordRepository(AttendanceRecordDAO dao)
         {
-            _attendanceRecordDAO = attendanceRecordDAO;
+            _dao = dao;
         }
-
-        public Task<AttendanceRecord?> GetByIdAsync(int id)
-            => _attendanceRecordDAO.GetByIdAsync(id);
-        public Task<List<AttendanceRecord>> GetByUserIdAsync(int userId)
-            => _attendanceRecordDAO.GetByUserIdAsync(userId);
-        public Task<List<AttendanceRecord>> GetAllAsync()
-            => _attendanceRecordDAO.GetAllAsync();
-        public Task AddAsync(AttendanceRecord record)
-            => _attendanceRecordDAO.AddAsync(record);
-        public Task UpdateAsync(AttendanceRecord record)
-            => _attendanceRecordDAO.UpdateAsync(record);
-        public Task DeleteAsync(int id)
-            => _attendanceRecordDAO.DeleteAsync(id);
+        public Task<AttendanceRecord?> GetByIdAsync(int id) => _dao.GetByIdAsync(id);
+        public Task AddAsync(AttendanceRecord record) => _dao.AddAsync(record);
+        public Task UpdateAsync(AttendanceRecord record) => _dao.UpdateAsync(record);
+        public Task<List<AttendanceRecord>> GetByUserIdAsync(int userId) => _dao.GetByUserIdAsync(userId);
+        public Task<List<AttendanceRecord>> GetAllAsync() => _dao.GetAllAsync();
+        public Task<List<AttendanceRecord>> GetByDateRangeAsync(DateTime startDate, DateTime endDate) => _dao.GetByDateRangeAsync(startDate, endDate);
+        public Task<AttendanceRecord?> GetByUserIdAndDateAsync(int userId, DateTime date) => _dao.GetByUserIdAndDateAsync(userId, date);
+        public Task DeleteAsync(int id) => _dao.DeleteAsync(id);
     }
 } 
