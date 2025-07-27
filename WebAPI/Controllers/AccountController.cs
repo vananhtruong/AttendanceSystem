@@ -143,7 +143,7 @@ namespace WebAPI.Controllers
             if (user == null) return NotFound();
             // Xóa hết refresh token của user
             user.RefreshTokens.Clear();
-            await _userRepo.UpdateAsync();
+            await _userRepo.UpdateAsync(user);
             return Ok();
         }
 

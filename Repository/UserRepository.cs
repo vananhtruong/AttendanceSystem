@@ -36,7 +36,7 @@ namespace Repository
         public Task AddAsync(User user)
         => _userDao.AddAsync(user);
         
-        public Task UpdateAsync()
-            => _userDao.UpdateAsync();    
+        public Task UpdateAsync(User user)
+            => _userDao.UpdateAsync(user);    
     }
 }
