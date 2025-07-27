@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>API Test</h1>
+    <button onclick="testApi()">Test API</button>
+    <div id="result"></div>
+
+    <script>
+        function testApi() {
+            // Test if WebAPI is running
+            $.ajax({
+                url: 'https://localhost:7192/swagger',
+                method: 'GET',
+                success: function() {
+                    $('#result').html('<p style="color: green;">✅ WebAPI is running!</p>');
+                },
+                error: function() {
+                    $('#result').html('<p style="color: red;">❌ WebAPI is not running!</p>');
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

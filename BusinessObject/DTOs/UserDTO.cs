@@ -7,6 +7,7 @@
         public string Email { get; set; }
         public string Role { get; set; }
         public bool IsBanned { get; set; } = false;
+        public string? FaceDescriptorJson { get; set; }
     }
 }
 

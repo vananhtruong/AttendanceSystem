@@ -43,11 +43,11 @@ public class DashboardEmployeeModel : PageModel
         var salary = await client.GetFromJsonAsync<List<SalaryRecordDTO>>($"api/Salary/user/{userId}") ?? new();
         var notifications = await client.GetFromJsonAsync<List<NotificationDTO>>($"api/Notification/user/{userId}") ?? new();
         DashboardData.TotalSchedules = schedules.Count;
-        DashboardData.CheckedIn = schedules.Count(x => x.AttendanceStatus == "OnTime" || x.AttendanceStatus == "Late");
-        DashboardData.Late = schedules.Count(x => x.AttendanceStatus == "Late");
-        DashboardData.Absent = schedules.Count(x => x.AttendanceStatus == "Absent");
-        DashboardData.SalaryThisMonth = salary.Where(s => s.Month.Month == DateTime.Now.Month && s.Month.Year == DateTime.Now.Year).Sum(s => s.Amount);
-        DashboardData.Notifications = notifications.Take(5).ToList();
+        DashboardData.CheckedIn = schedules.Count(x => x.CheckInStatus == "OnTime" || x.CheckInStatus == "Late");
+        DashboardData.Late = schedules.Count(x => x.CheckInStatus == "Late");
+        DashboardData.Absent = schedules.Count(x => x.CheckInStatus == "Absent");
+        //DashboardData.SalaryThisMonth = salary.Where(s => s.Month.Month == DateTime.Now.Month && s.Month.Year == DateTime.Now.Year).Sum(s => s.Amount);
+        //DashboardData.Notifications = notifications.Take(5).ToList();
     }
 
     public class DashboardDataDTO

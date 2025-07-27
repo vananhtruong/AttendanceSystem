@@ -1,0 +1,254 @@
+﻿@page
+@model WebRazor.Pages.Account.ProfileModel
+@{
+    ViewData["Title"] = "Profile";
+    Layout = "_Layout";
+}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-person-circle me-2"></i>My Profile</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Profile Info -->
+                        <div class="col-md-8">
+                            <div class="card profile-card">
+                                <div class="card-header"><h5><i class="bi bi-person-circle me-2"></i>Personal Information</h5></div>
+                                <div class="card-body">
+                                    <p><strong>Full Name:</strong> <span id="userFullName">Loading...</span></p>
+                                    <p><strong>Email:</strong> <span id="userEmail">Loading...</span></p>
+                                    <p><strong>Role:</strong> <span id="userRole">Loading...</span></p>
+                                    <p><strong>Face ID:</strong> <span id="faceStatus">Loading...</span></p>
+                                </div>
+                            </div>
+
+                            <!-- Edit Profile -->
+                            <div class="card mt-4 profile-card">
+                                <div class="card-header"><h5><i class="bi bi-pencil-square me-2"></i>Edit Profile</h5></div>
+                                <div class="card-body">
+                                    <form id="editProfileForm">
+                                        <div class="mb-3">
+                                            <label for="editFullName" class="form-label">Full Name</label>
+                                            <input type="text" class="form-control" id="editFullName" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editEmail" class="form-label">Email</label>
+                                            <input type="email" class="form-control" id="editEmail" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-success"><i class="bi bi-check me-2"></i>Update Profile</button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Change Password -->
+                            <div class="card mt-4 profile-card">
+                                <div class="card-header"><h5><i class="bi bi-key me-2"></i>Change Password</h5></div>
+                                <div class="card-body">
+                                    <form id="changePasswordForm">
+                                        <div class="mb-3">
+                                            <label for="currentPassword" class="form-label">Current Password</label>
+                                            <input type="password" class="form-control" id="currentPassword" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="newPassword" class="form-label">New Password</label>
+                                            <input type="password" class="form-control" id="newPassword" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                                            <input type="password" class="form-control" id="confirmPassword" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"><i class="bi bi-key me-2"></i>Change Password</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Face ID -->
+                        <div class="col-md-4">
+                            <div class="card profile-card text-center">
+                                <div class="card-header"><h5><i class="bi bi-camera-video me-2"></i>Face ID Registration</h5></div>
+                                <div class="card-body">
+                                    <p id="faceStatusText">Checking face registration status...</p>
+                                    <button class="btn btn-success" id="registerFaceBtn" style="display: none;"><i class="bi bi-camera"></i> Register Face ID</button>
+                                    <button class="btn btn-danger" id="removeFaceBtn" style="display: none;"><i class="bi bi-trash"></i> Remove Face ID</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Camera Modal -->
+<div class="modal fade" id="cameraModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-camera me-2"></i>Register Face ID</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <video id="video" width="640" height="480" autoplay style="border:1px solid #ddd; border-radius:8px;"></video>
+                <canvas id="canvas" style="display:none;"></canvas>
+                <div id="capturedImage" style="display:none;">
+                    <img id="capturedImg" style="max-width:100%; border-radius:8px;" />
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-primary" id="captureBtn"><i class="bi bi-camera"></i> Capture</button>
+                    <button class="btn btn-success" id="confirmBtn" style="display:none;"><i class="bi bi-check"></i> Confirm & Register</button>
+                    <button class="btn btn-secondary" id="retakeBtn" style="display:none;"><i class="bi bi-arrow-clockwise"></i> Retake</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let stream = null, capturedImageData = null;
+
+        $(function () {
+            loadUserProfile();
+            setupEventListeners();
+            setupFaceIdEvents();
+        });
+
+        function getToken() {
+            return localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken') || '';
+        }
+
+        function showAlert(message, type) {
+            $('.container-fluid').prepend(`
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `);
+        }
+
+        function loadUserProfile() {
+            $.ajax({
+                url: 'https://localhost:7117/api/account/me',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + getToken() },
+                success: function (res) {
+                    if (res.success) {
+                        $('#userFullName').text(res.data.fullName || 'N/A');
+                        $('#userEmail').text(res.data.email || 'N/A');
+                        $('#userRole').text(res.data.role || 'Employee');
+                        updateFaceStatusUI(false);
+                    } else showAlert(res.message || 'Error loading profile', 'danger');
+                },
+                error: () => showAlert('Error loading profile', 'danger')
+            });
+        }
+
+        function setupEventListeners() {
+            $('#editProfileForm').on('submit', function (e) {
+                e.preventDefault();
+                $.ajax({
+                    url: 'https://localhost:7117/api/account/update-profile',
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                    data: JSON.stringify({ fullName: $('#editFullName').val(), email: $('#editEmail').val() }),
+                    success: res => {
+                        if (res.success) {
+                            showAlert('Profile updated successfully', 'success');
+                            loadUserProfile();
+                        } else showAlert(res.message || 'Failed to update profile', 'danger');
+                    },
+                    error: () => showAlert('Error updating profile', 'danger')
+                });
+            });
+
+            $('#changePasswordForm').on('submit', function (e) {
+                e.preventDefault();
+                const current = $('#currentPassword').val(), newPass = $('#newPassword').val(), confirm = $('#confirmPassword').val();
+                if (newPass.length < 6) return showAlert('Password must be at least 6 characters', 'danger');
+                if (newPass !== confirm) return showAlert('Passwords do not match', 'danger');
+                $.ajax({
+                    url: 'https://localhost:7117/api/account/change-password',
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                    data: JSON.stringify({ currentPassword: current, newPassword: newPass }),
+                    success: res => {
+                        if (res.success) { showAlert('Password changed successfully', 'success'); $('#changePasswordForm')[0].reset(); }
+                        else showAlert(res.message || 'Failed to change password', 'danger');
+                    },
+                    error: xhr => showAlert(xhr.responseJSON?.message || 'Error changing password', 'danger')
+                });
+            });
+        }
+
+        function setupFaceIdEvents() {
+            $('#registerFaceBtn').on('click', function () {
+                $('#cameraModal').modal('show');
+                startCamera();
+            });
+            $('#cameraModal').on('hidden.bs.modal', function () {
+                stopCamera();
+                resetCameraUI();
+            });
+            $('#captureBtn').on('click', function () {
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0);
+                capturedImageData = canvas.toDataURL('image/jpeg');
+                $('#capturedImg').attr('src', capturedImageData);
+                $('#video').hide(); $('#capturedImage').show();
+                $('#captureBtn').hide(); $('#confirmBtn').show(); $('#retakeBtn').show();
+            });
+            $('#confirmBtn').on('click', function () {
+                if (!capturedImageData) return showAlert('Please capture an image first!', 'danger');
+                $.ajax({
+                    url: 'https://localhost:7117/api/face/register',
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' },
+                    data: JSON.stringify({ imageData: capturedImageData }),
+                    success: () => { showAlert('Face ID registered successfully!', 'success'); $('#cameraModal').modal('hide'); updateFaceStatusUI(true); },
+                    error: () => showAlert('Error registering Face ID', 'danger')
+                });
+            });
+            $('#retakeBtn').on('click', function () { resetCameraUI(); });
+            $('#removeFaceBtn').on('click', function () {
+                if (!confirm('Are you sure you want to remove your Face ID?')) return;
+                $.ajax({
+                    url: 'https://localhost:7117/api/face/remove',
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + getToken() },
+                    success: () => { showAlert('Face ID removed successfully!', 'success'); updateFaceStatusUI(false); },
+                    error: () => showAlert('Error removing Face ID', 'danger')
+                });
+            });
+        }
+
+        function updateFaceStatusUI(hasFaceRegistered) {
+            if (hasFaceRegistered) {
+                $('#faceStatus').html('<span class="badge bg-success">Registered</span>');
+                $('#faceStatusText').text('Your Face ID is registered.');
+                $('#registerFaceBtn').hide(); $('#removeFaceBtn').show();
+            } else {
+                $('#faceStatus').html('<span class="badge bg-warning">Not Registered</span>');
+                $('#faceStatusText').text('Register your face ID for attendance.');
+                $('#registerFaceBtn').show(); $('#removeFaceBtn').hide();
+            }
+        }
+
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ video: true }).then(mediaStream => {
+                stream = mediaStream;
+                document.getElementById('video').srcObject = stream;
+            }).catch(err => showAlert('Error accessing camera: ' + err.message, 'danger'));
+        }
+        function stopCamera() { if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; } }
+        function resetCameraUI() { $('#video').show(); $('#capturedImage').hide(); $('#captureBtn').show(); $('#confirmBtn').hide(); $('#retakeBtn').hide(); capturedImageData = null; }
+    </script>
+}

@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Repository;
 using BusinessObject.Models;
 using AutoMapper;
 using BusinessObject.DTOs;
+using WebAPI.Services;
 
 namespace WebAPI.Controllers
 {
@@ -14,15 +15,20 @@ namespace WebAPI.Controllers
         private readonly IWorkScheduleRepository _workScheduleRepo;
         private readonly IMapper _mapper;
         private readonly IAttendanceRecordRepository _attendanceRecordRepository;
+        private readonly IWorkScheduleEvaluatorService _evaluator;
 
-        public WorkScheduleController(IWorkScheduleRepository workScheduleRepo, IMapper mapper, IAttendanceRecordRepository attendanceRecordRepository)
+        public WorkScheduleController(
+            IWorkScheduleRepository workScheduleRepo,
+            IMapper mapper,
+            IAttendanceRecordRepository attendanceRecordRepository,
+            IWorkScheduleEvaluatorService evaluator)
         {
             _workScheduleRepo = workScheduleRepo;
             _mapper = mapper;
             _attendanceRecordRepository = attendanceRecordRepository;
+            _evaluator = evaluator;
         }
 
-        // GET: api/WorkSchedule
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -31,7 +37,6 @@ namespace WebAPI.Controllers
             return Ok(dto);
         }
 
-        // GET: api/WorkSchedule/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -41,7 +46,6 @@ namespace WebAPI.Controllers
             return Ok(dto);
         }
 
-        // POST: api/WorkSchedule
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] WorkScheduleDTO dto)
@@ -51,7 +55,6 @@ namespace WebAPI.Controllers
             return Ok();
         }
 
-        // PUT: api/WorkSchedule/{id}
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(int id, [FromBody] WorkScheduleDTO dto)
@@ -63,7 +66,6 @@ namespace WebAPI.Controllers
             return Ok();
         }
 
-        // DELETE: api/WorkSchedule/{id}
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
@@ -72,7 +74,6 @@ namespace WebAPI.Controllers
             return Ok();
         }
 
-        // GET: api/WorkSchedule/overtime
         [HttpGet("overtime")]
         public async Task<IActionResult> GetOvertimeSchedules()
         {
@@ -82,7 +83,6 @@ namespace WebAPI.Controllers
             return Ok(dto);
         }
 
-        // GET: api/WorkSchedule/user/{userId}/with-attendance
         [HttpGet("user/{userId}/with-attendance")]
         [Authorize(Roles = "Admin,Employee")]
         public async Task<IActionResult> GetSchedulesWithAttendance(int userId)
@@ -102,23 +102,11 @@ namespace WebAPI.Controllers
                     .OrderByDescending(a => a.RecordTime)
                     .FirstOrDefault();
 
-                string attendanceStatus;
-                if (checkIn == null)
-                {
-                    attendanceStatus = "Absent";
-                }
-                else if (checkIn.RecordTime > s.WorkDate.Date.Add(shift.StartTime))
-                {
-                    attendanceStatus = "Late";
-                }
-                else if (checkIn.RecordTime <= s.WorkDate.Date.Add(shift.StartTime) && checkOut != null && checkOut.RecordTime >= s.WorkDate.Date.Add(shift.EndTime))
-                {
-                    attendanceStatus = "OnTime";
-                }
-                else
-                {
-                    attendanceStatus = "NotYet";
-                }
+                // Tính trạng thái & giờ làm
+                (decimal hoursWorked, string scheduleStatus) = _evaluator.EvaluateStatus(
+                    s.WorkDate, shift.StartTime, shift.EndTime, checkIn?.RecordTime, checkOut?.RecordTime
+                );
+                s.Status = scheduleStatus;
 
                 return new WorkScheduleWithAttendanceDTO
                 {
@@ -126,23 +114,33 @@ namespace WebAPI.Controllers
                     WorkDate = s.WorkDate,
                     ShiftName = shift.Name,
                     IsOvertime = shift.IsOvertime,
-                    ScheduleStatus = s.Status,
-                    AttendanceStatus = attendanceStatus,
+                    ScheduleStatus = scheduleStatus,
+
                     CheckInTime = checkIn?.RecordTime,
-                    CheckOutTime = checkOut?.RecordTime
+                    CheckInStatus = checkIn == null ? "Absent" :
+                        checkIn.RecordTime <= s.WorkDate.Date.Add(shift.StartTime) ? "OnTime" : "Late",
+
+                    CheckOutTime = checkOut?.RecordTime,
+                    CheckOutStatus = checkOut == null ? "Absent" :
+                        checkOut.RecordTime >= s.WorkDate.Date.Add(shift.EndTime) ? "OnTime" : "Early",
+
+                    HoursWorked = Math.Round(hoursWorked, 2),
+
+                    WorkShiftId = s.WorkShiftId,
+                    WorkShift = shift
                 };
             }).OrderBy(x => x.WorkDate).ToList();
 
             return Ok(result);
         }
 
+
         [HttpGet("count")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetWorkScheduleCount()
         {
             var schedules = await _workScheduleRepo.GetAllAsync();
-            var count = schedules.Count();
-            return Ok(count);
+            return Ok(schedules.Count());
         }
     }
 }

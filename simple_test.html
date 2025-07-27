@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Test</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Simple API Test</h1>
+    <button onclick="testGetUser()">Test Get User</button>
+    <button onclick="testChangePassword()">Test Change Password</button>
+    <div id="result"></div>
+
+    <script>
+        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJ0aHVuZ3V5ZXQ1NTIwM0BnbWFpbC5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJFbXBsb3llZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJUaHUgTmd1eWV0IiwiZXhwIjoxNzUzNjQwNDYwLCJpc3MiOiJBdHRlbmRhbmNlQVBJIiwiYXVkIjoiQXR0ZW5kYW5jZUNsaWVudCJ9.C5295_gwccrV7vuycuiJoJHgT3nQMjrF0W3s0FPXxt8';
+
+        function testGetUser() {
+                           $.ajax({
+                   url: 'https://localhost:7118/api/account/me',
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    $('#result').html('<div style="color: green;">✅ Get User Success: ' + JSON.stringify(response) + '</div>');
+                },
+                error: function(xhr, status, error) {
+                    $('#result').html('<div style="color: red;">❌ Get User Error: ' + xhr.responseText + '</div>');
+                }
+            });
+        }
+
+        function testChangePassword() {
+            const data = {
+                currentPassword: "123",
+                newPassword: "newpassword123"
+            };
+
+            console.log('Sending data:', data);
+
+                               $.ajax({
+                       url: 'https://localhost:7118/api/account/change-password',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                data: JSON.stringify(data),
+                success: function(response) {
+                    $('#result').html('<div style="color: green;">✅ Change Password Success: ' + JSON.stringify(response) + '</div>');
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error details:', {
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        responseText: xhr.responseText,
+                        error: error
+                    });
+                    $('#result').html('<div style="color: red;">❌ Change Password Error: ' + xhr.responseText + '</div>');
+                }
+            });
+        }
+    </script>
+</body>
+</html> 
