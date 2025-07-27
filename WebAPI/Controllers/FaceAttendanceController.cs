@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using WebAPI.Services;
 using BusinessObject.DTOs;
+using Repository;
 
 namespace WebAPI.Controllers
 {
@@ -13,13 +14,22 @@ namespace WebAPI.Controllers
     {
         private readonly IFaceRecognitionService _faceRecognitionService;
         private readonly ILogger<FaceAttendanceController> _logger;
+        private readonly IWorkScheduleRepository _workScheduleRepo;
+        private readonly IAttendanceRecordRepository _attendanceRecordRepo;
+        private readonly IWorkScheduleEvaluatorService _evaluator;
 
         public FaceAttendanceController(
             IFaceRecognitionService faceRecognitionService,
-            ILogger<FaceAttendanceController> logger)
+            ILogger<FaceAttendanceController> logger,
+            IWorkScheduleRepository workScheduleRepo,
+            IAttendanceRecordRepository attendanceRecordRepo,
+            IWorkScheduleEvaluatorService evaluator)
         {
             _faceRecognitionService = faceRecognitionService;
             _logger = logger;
+            _workScheduleRepo = workScheduleRepo;
+            _attendanceRecordRepo = attendanceRecordRepo;
+            _evaluator = evaluator;
         }
 
         /// <summary>
@@ -212,6 +222,55 @@ namespace WebAPI.Controllers
                 _logger.LogError(ex, "Error removing face data for user {UserId}", userId);
                 return StatusCode(500,
                     ApiResponseDto.ErrorResult("Failed to remove face data"));
+            }
+        }
+        /// <summary>
+        /// Cập nhật trạng thái WorkSchedule dựa trên giờ check-in/check-out
+        /// </summary>
+        [HttpPost("update-schedule-status/{scheduleId}")]
+        [ProducesResponseType(typeof(ApiResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseDto), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ApiResponseDto>> UpdateWorkScheduleStatus(int scheduleId)
+        {
+            try
+            {
+                var schedule = await _workScheduleRepo.GetByIdAsync(scheduleId);
+                if (schedule == null)
+                    return NotFound(ApiResponseDto.ErrorResult("WorkSchedule not found"));
+
+                var attendanceRecords = await _attendanceRecordRepo.GetByUserIdAsync(schedule.UserId);
+                var checkIn = attendanceRecords
+                    .Where(a => a.WorkScheduleId == schedule.Id && a.Type == "CheckIn")
+                    .OrderBy(a => a.RecordTime)
+                    .FirstOrDefault();
+                var checkOut = attendanceRecords
+                    .Where(a => a.WorkScheduleId == schedule.Id && a.Type == "CheckOut")
+                    .OrderByDescending(a => a.RecordTime)
+                    .FirstOrDefault();
+
+                // Tính toán trạng thái mới
+                var (hoursWorked, newStatus) = _evaluator.EvaluateStatus(
+                    schedule.WorkDate,
+                    schedule.WorkShift.StartTime,
+                    schedule.WorkShift.EndTime,
+                    checkIn?.RecordTime,
+                    checkOut?.RecordTime
+                );
+
+                schedule.Status = newStatus;
+                await _workScheduleRepo.UpdateAsync(schedule);
+
+                return Ok(ApiResponseDto.SuccessResult(new
+                {
+                    schedule.Id,
+                    schedule.Status,
+                    HoursWorked = hoursWorked
+                }));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating WorkSchedule status");
+                return StatusCode(500, ApiResponseDto.ErrorResult("Failed to update WorkSchedule status"));
             }
         }
     }

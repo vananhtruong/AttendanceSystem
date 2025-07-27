@@ -11,6 +11,7 @@ using Microsoft.OData.ModelBuilder;
 using Microsoft.OpenApi.Models;
 using BusinessObject.Models;
 using Hangfire;
+using BusinessObject.DTOs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,7 +49,9 @@ builder.Services.AddScoped<ISalaryRepository, SalaryRepository>();
 builder.Services.AddScoped<CorrectionRequestDAO>();
 builder.Services.AddScoped<ICorrectionRequestRepository, CorrectionRequestRepository>();
 
-//builder.Services.AddScoped<IFaceRecognitionService, FaceRecognitionService>();
+builder.Services.AddScoped<IFaceRecognitionService, FaceRecognitionService>();
+builder.Services.AddScoped<IWorkScheduleEvaluatorService, WorkScheduleEvaluatorService>();
+builder.Services.AddScoped<IWorkScheduleUpdateService, WorkScheduleUpdateService>();
 
 builder.Services.AddScoped<ScheduleStatusService>();
 
@@ -58,7 +61,14 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 
 
 
-builder.Services.AddAutoMapper(typeof(WebAPI.MappingProfiles.UserProfile));
+
+
+builder.Services.AddAutoMapper(typeof(WebAPI.MappingProfiles.UserProfile), 
+    typeof(WebAPI.MappingProfiles.AttendanceRecordProfile),
+    typeof(WebAPI.MappingProfiles.CorrectionRequestProfile),
+    typeof(WebAPI.MappingProfiles.NotificationProfile),
+    typeof(WebAPI.MappingProfiles.SalaryRecordProfile),
+    typeof(WebAPI.MappingProfiles.WorkScheduleProfile));
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -103,7 +113,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowRazor",
         policy =>
         {
-            policy.WithOrigins("https://localhost:7192")
+            policy.WithOrigins("https://localhost:7192", "http://localhost:7192", "https://localhost:7118", "http://localhost:7118")
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
