@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.OData;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.OpenApi.Models;
 using BusinessObject.Models;
+using Hangfire;
 using BusinessObject.DTOs;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,6 +53,13 @@ builder.Services.AddScoped<IFaceRecognitionService, FaceRecognitionService>();
 builder.Services.AddScoped<IWorkScheduleEvaluatorService, WorkScheduleEvaluatorService>();
 builder.Services.AddScoped<IWorkScheduleUpdateService, WorkScheduleUpdateService>();
 
+builder.Services.AddScoped<ScheduleStatusService>();
+
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+
+
 
 
 
@@ -78,7 +86,10 @@ builder.Services.AddAuthentication("Bearer")
         };
     });
 
-
+// Hangfire configuration
+builder.Services.AddHangfire(config =>
+    config.UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHangfireServer();
 
 
 // OData EDM Model
@@ -153,4 +164,21 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+
+app.UseHangfireDashboard("/hangfire");
+
+RecurringJob.AddOrUpdate<ScheduleStatusService>(
+    "update-schedule-status",
+    service => service.UpdateNotYetToAbsent(),
+    "0 * * * *" // mỗi giờ 0 phút
+);
+RecurringJob.AddOrUpdate<ScheduleStatusService>(
+    "send-late-checkin-reminder",
+    service => service.SendReminderForLateCheckIn(),
+    "*/10 * * * *"  // mỗi 10 phút
+);
+
 app.Run();
+
+
+
