@@ -1,5 +1,29 @@
-@page
+﻿@page
 @model AttendanceIndexModel
+@functions {
+    string GetStatusLabel(string status)
+    {
+        return status switch
+        {
+            "OnTime" => "attended",
+            "Late" => "late",
+            "Absent" => "absent",
+            _ => "not yet"
+        };
+    }
+
+    string GetBadgeClass(string status)
+    {
+        return status switch
+        {
+            "OnTime" => "badge-ontime",
+            "Late" => "badge-late",
+            "Absent" => "badge-absent",
+            _ => "badge-pending"
+        };
+    }
+}
+
 @{
     ViewData["Title"] = "Attendance & History";
 }
@@ -45,18 +69,16 @@
                 <div class="card attendance-card p-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-bold text-primary">@item.Date.ToString("dddd, dd MMM yyyy")</span>
-                        <span class="badge badge-status
-                            @(item.Status == "OnTime" ? "badge-ontime" :
-                              item.Status == "Late" ? "badge-late" :
-                              item.Status == "Absent" ? "badge-absent" : "badge-pending")">
-                            @item.Status
+                        <span class="badge badge-status @GetBadgeClass(item.Status)">
+                            @GetStatusLabel(item.Status)
                         </span>
                     </div>
                     <div>
                         <i class="bi bi-clock me-1"></i>
-                        <span>Check-in: @item.CheckInTime.ToString("HH:mm")</span> |
-                        <span>Check-out: @item.CheckOutTime?.ToString("HH:mm") ?? "--"</span>
+                        <span>Check-in: @(item.CheckInTime != DateTime.MinValue ? item.CheckInTime.ToString("HH:mm") : "Unknown")</span> |
+                        <span>Check-out: @(item.CheckOutTime.HasValue ? item.CheckOutTime.Value.ToString("HH:mm") : "Unknown")</span>
                     </div>
+
                     <div class="mt-2">
                         <span class="badge bg-light text-dark">Hours worked: @item.HoursWorked</span>
                     </div>

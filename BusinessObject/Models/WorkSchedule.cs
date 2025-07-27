@@ -17,7 +17,8 @@ namespace BusinessObject.Models
 
         public DateTime WorkDate { get; set; }
 
-        public string Status { get; set; } // VD: "Pending", "CheckedIn", "Absent"
+        public string Status { get; set; } // "Absent", "Completed", "Insufficient", "NotYet"
     }
+
 
 }

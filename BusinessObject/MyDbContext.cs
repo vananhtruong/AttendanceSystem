@@ -21,7 +21,7 @@ namespace BusinessObject
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseSqlServer("Server=(local);Database=AttendanceSystem;Trusted_Connection=True;TrustServerCertificate=True");
+                optionsBuilder.UseSqlServer("Server=localhost,49898;Database=AttendanceSystem;Trusted_Connection=True;TrustServerCertificate=True");
             }
         }
 
@@ -44,7 +44,7 @@ namespace BusinessObject
                 
             modelBuilder.Entity<AttendanceRecord>()
                 .HasOne(ar => ar.User)
-                .WithMany()
+                .WithMany(u => u.Attendances)
                 .HasForeignKey(ar => ar.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
 
