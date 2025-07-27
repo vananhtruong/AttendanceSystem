@@ -18,6 +18,9 @@ namespace BusinessObject.Models
         [Required]
         public string Role { get; set; } = "Employee"; // hoặc "Admin"
 
-        public ICollection<RefreshToken> RefreshTokens { get; set; }
+        public string? FaceDescriptorJson { get; set; }
+
+        public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+        public ICollection<AttendanceRecord> Attendances { get; set; } = new List<AttendanceRecord>();
     }
 }

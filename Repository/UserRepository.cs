@@ -15,14 +15,17 @@ namespace Repository
         public Task<User?> GetByEmailAsync(string email)
             => _userDao.GetByEmailAsync(email);
 
+        public Task<User?> GetByIdAsync(int id)
+            => _userDao.GetByIdAsync(id);
+
         public Task AddAsync(User user)
             => _userDao.AddAsync(user);
 
         public Task<List<User>> GetAllAsync()
             => _userDao.GetAllAsync();
 
-        public Task UpdateAsync()
-            => _userDao.UpdateAsync();
+        public Task UpdateAsync(User user)
+            => _userDao.UpdateAsync(user);
     }
 
 }
