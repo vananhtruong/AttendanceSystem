@@ -12,10 +12,11 @@ namespace DataAccessLayer
         {
             _context = context;
         }
-      
-      public async Task<AttendanceRecord?> GetByIdAsync(int id)
+
+        public async Task<AttendanceRecord?> GetByIdAsync(int id)
         {
             return await _context.AttendanceRecords.Include(a => a.User).Include(a => a.WorkSchedule).FirstOrDefaultAsync(a => a.Id == id);
+        }
         
         public async Task AddAsync(AttendanceRecord record)
         {
@@ -47,9 +48,6 @@ namespace DataAccessLayer
                 _context.AttendanceRecords.Remove(record);
                 await _context.SaveChangesAsync();
             }
-          return await _context.AttendanceRecords
-                .Include(ar => ar.User)
-                .ToListAsync();
         }
         
         public async Task<List<AttendanceRecord>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)

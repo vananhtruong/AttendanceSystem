@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.OData;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.OpenApi.Models;
+using BusinessObject.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,8 +42,8 @@ builder.Services.AddScoped<NotificationDAO>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<SalaryDAO>();
 builder.Services.AddScoped<ISalaryRepository, SalaryRepository>();
-//builder.Services.AddScoped<CorrectionRequestDAO>();
-//builder.Services.AddScoped<ICorrectionRequestRepository>();
+builder.Services.AddScoped<CorrectionRequestDAO>();
+builder.Services.AddScoped<ICorrectionRequestRepository, CorrectionRequestRepository>();
 
 builder.Services.AddScoped<IFaceRecognitionService, FaceRecognitionService>();
 
@@ -94,6 +95,7 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod()
                   .AllowCredentials();
         });
+});
 
 builder.Services.AddSwaggerGen(option =>
 {

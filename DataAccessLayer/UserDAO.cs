@@ -44,13 +44,6 @@ namespace DataAccessLayer
             await _context.SaveChangesAsync();
         }
 
-        public async Task<User?> GetByIdAsync(int id)
-        {
-            return await _context.Users
-                .Include(u => u.RefreshTokens)
-                .FirstOrDefaultAsync(u => u.Id == id);
-        }
-
         public async Task<List<User>> SearchAsync(string keyword)
         {
             return await _context.Users
