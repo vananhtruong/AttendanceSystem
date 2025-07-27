@@ -13,7 +13,12 @@ namespace BusinessObject
         public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
         public DbSet<CorrectionRequest> CorrectionRequests { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Server=(local);Database=AttendanceSystem;Trusted_Connection=True;TrustServerCertificate=True");
+        {
+            if (!optionsBuilder.IsConfigured)
+            {
+                optionsBuilder.UseSqlServer("Server=(local);Database=AttendanceSystem;Trusted_Connection=True;TrustServerCertificate=True");
+            }
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -24,16 +29,19 @@ namespace BusinessObject
                 .HasForeignKey(rt => rt.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Xóa các bảng liên quan khi user bị xóa (tuỳ chỉnh thêm nếu muốn)
+            // AttendanceRecord relationship
             modelBuilder.Entity<AttendanceRecord>()
                 .HasOne(ar => ar.User)
-                .WithMany()
-                .HasForeignKey(ar => ar.UserId);
+                .WithMany(u => u.Attendances)
+                .HasForeignKey(ar => ar.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
+            // CorrectionRequest relationship
             modelBuilder.Entity<CorrectionRequest>()
                 .HasOne(cr => cr.User)
                 .WithMany()
-                .HasForeignKey(cr => cr.UserId);
+                .HasForeignKey(cr => cr.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
         }
     }
