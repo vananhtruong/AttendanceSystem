@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.OData;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.OpenApi.Models;
 using BusinessObject.Models;
+using Hangfire;
+using BusinessObject.DTOs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,10 +32,12 @@ builder.Services.AddControllers()
 builder.Services.AddScoped<UserDAO>();
 builder.Services.AddScoped<AttendanceRecordDAO>();
 builder.Services.AddScoped<WorkScheduleDAO>();
+builder.Services.AddScoped<WorkShiftDAO>();
 
 // Repository Layer
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAttendanceRecordRepository, AttendanceRecordRepository>();
+builder.Services.AddScoped<IWorkShiftRepository, WorkShiftRepository>();
 
 // Services
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -46,9 +50,25 @@ builder.Services.AddScoped<CorrectionRequestDAO>();
 builder.Services.AddScoped<ICorrectionRequestRepository, CorrectionRequestRepository>();
 
 builder.Services.AddScoped<IFaceRecognitionService, FaceRecognitionService>();
+builder.Services.AddScoped<IWorkScheduleEvaluatorService, WorkScheduleEvaluatorService>();
+builder.Services.AddScoped<IWorkScheduleUpdateService, WorkScheduleUpdateService>();
+
+builder.Services.AddScoped<ScheduleStatusService>();
+
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 
-builder.Services.AddAutoMapper(typeof(WebAPI.MappingProfiles.UserProfile));
+
+
+
+
+builder.Services.AddAutoMapper(typeof(WebAPI.MappingProfiles.UserProfile), 
+    typeof(WebAPI.MappingProfiles.AttendanceRecordProfile),
+    typeof(WebAPI.MappingProfiles.CorrectionRequestProfile),
+    typeof(WebAPI.MappingProfiles.NotificationProfile),
+    typeof(WebAPI.MappingProfiles.SalaryRecordProfile),
+    typeof(WebAPI.MappingProfiles.WorkScheduleProfile));
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -66,7 +86,10 @@ builder.Services.AddAuthentication("Bearer")
         };
     });
 
-
+// Hangfire configuration
+builder.Services.AddHangfire(config =>
+    config.UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHangfireServer();
 
 
 // OData EDM Model
@@ -148,4 +171,21 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+
+app.UseHangfireDashboard("/hangfire");
+
+RecurringJob.AddOrUpdate<ScheduleStatusService>(
+    "update-schedule-status",
+    service => service.UpdateNotYetToAbsent(),
+    "0 * * * *" // mỗi giờ 0 phút
+);
+RecurringJob.AddOrUpdate<ScheduleStatusService>(
+    "send-late-checkin-reminder",
+    service => service.SendReminderForLateCheckIn(),
+    "*/10 * * * *"  // mỗi 10 phút
+);
+
 app.Run();
+
+
+

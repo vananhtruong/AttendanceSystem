@@ -21,6 +21,7 @@ namespace BusinessObject
         {
             if (!optionsBuilder.IsConfigured)
             {
+
                 optionsBuilder.UseSqlServer("Server=db24241.databaseasp.net; Database=db24241; User Id=db24241; Password=F?z7_3HqmZ@5; Encrypt=False; MultipleActiveResultSets=True; TrustServerCertificate=True; Connection Timeout=30;");
             }
         }
@@ -44,7 +45,7 @@ namespace BusinessObject
                 
             modelBuilder.Entity<AttendanceRecord>()
                 .HasOne(ar => ar.User)
-                .WithMany()
+                .WithMany(u => u.Attendances)
                 .HasForeignKey(ar => ar.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
 

@@ -1,17 +1,5 @@
 @page
 @model WorkScheduleIndexModel
-@functions {
-    string GetStatusLabel(string status)
-    {
-        return status switch
-        {
-            "OnTime" => "attended",
-            "Late" => "late",
-            "Absent" => "absent",
-            _ => "not yet"
-        };
-    }
-}
 @{
     ViewData["Title"] = "My Work Schedules";
     var daysOfWeek = Enumerable.Range(0, 7).Select(i => Model.WeekStart.AddDays(i)).ToList();
@@ -45,7 +33,7 @@
         <table class="table schedule-table">
             <thead class="table-light">
                 <tr>
-                    <th>Ca</th>
+                    <th>Shift</th>
                     @foreach (var day in daysOfWeek)
                     {
                         <th>@day.ToString("ddd")<br />@day.ToString("dd/MM")</th>
@@ -62,10 +50,13 @@
                             <td>
                                 @if (scheduleMap.TryGetValue((ca, day.Date), out var sch))
                                 {
-                                    var label = GetStatusLabel(sch.AttendanceStatus);
                                     <div class="schedule-cell p-2" data-bs-toggle="modal" data-bs-target="#scheduleDetailModal" onclick="showScheduleDetail(@sch.WorkScheduleId)">
-                                        <span class="badge badge-status @(label == "attended" ? "badge-ontime" : label == "late" ? "badge-late" : label == "absent" ? "badge-absent" : "badge-pending")">
-                                            @label
+                                        <span class="badge badge-status
+            @(sch.ScheduleStatus == "Completed" ? "badge-ontime" :
+              sch.ScheduleStatus == "Insufficient" ? "badge-late" :
+              sch.ScheduleStatus == "Absent" ? "badge-absent" :
+              "badge-pending")">
+                                            @sch.ScheduleStatus
                                         </span>
                                     </div>
                                 }
@@ -81,38 +72,59 @@
         </table>
     </div>
     <div class="mt-4">
-        <span class="legend-badge badge badge-ontime">attended</span> Đã chấm công &nbsp;
-        <span class="legend-badge badge badge-late">late</span> Đi muộn &nbsp;
-        <span class="legend-badge badge badge-absent">absent</span> Vắng mặt &nbsp;
-        <span class="legend-badge badge badge-pending">not yet</span> Chưa chấm công
+        <span class="legend-badge badge badge-ontime">Completed</span> Đủ giờ &nbsp;
+        <span class="legend-badge badge badge-late">Insufficient</span> Không đủ giờ &nbsp;
+        <span class="legend-badge badge badge-absent">Absent</span> Vắng mặt &nbsp;
+        <span class="legend-badge badge badge-pending">Not yet</span> Chưa chấm công
     </div>
 </div>
 <!-- Modal chi tiết ca làm -->
 <div class="modal fade" id="scheduleDetailModal" tabindex="-1" aria-labelledby="scheduleDetailModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="scheduleDetailModalLabel">Work Schedule Detail</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body" id="scheduleDetailBody">
-        <!-- Nội dung chi tiết sẽ được load bằng JS -->
-      </div>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-3">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="scheduleDetailModalLabel">
+                    <i class="bi bi-info-circle me-2"></i> Work Schedule Detail
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="scheduleDetailBody">
+                <!-- Nội dung sẽ được load bằng JS -->
+            </div>
+        </div>
     </div>
-  </div>
 </div>
+
 @section Scripts {
 <script>
-    async function showScheduleDetail(scheduleId) {
-        const schedules = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WorkSchedules));
-        const sch = schedules.find(x => x.WorkScheduleId === scheduleId);
-        if (!sch) return;
-            let html = `<div><b>Shift:</b> ${sch.ShiftName}</div>
-            <div><b>Date:</b> ${new Date(sch.WorkDate).toLocaleString()}</div>
-            <div><b>Status:</b> <span class='badge badge-status ${sch.AttendanceStatus === 'OnTime' ? 'badge-ontime' : sch.AttendanceStatus === 'Late' ? 'badge-late' : sch.AttendanceStatus === 'Absent' ? 'badge-absent' : 'badge-pending'}'>${sch.AttendanceStatus}</span></div>
-            <div><b>Check-in:</b> ${sch.CheckInTime ? new Date(sch.CheckInTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : '--'}</div>
-            <div><b>Check-out:</b> ${sch.CheckOutTime ? new Date(sch.CheckOutTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : '--'}</div>`;
-        document.getElementById('scheduleDetailBody').innerHTML = html;
-    }
+        async function showScheduleDetail(scheduleId) {
+            const schedules = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WorkSchedules));
+            const sch = schedules.find(x => x.WorkScheduleId === scheduleId);
+            if (!sch) return;
+
+            let html = `
+                <div class="mb-3">
+                    <h5 class="fw-bold text-primary">${sch.ShiftName}</h5>
+                    <p class="mb-1"><i class="bi bi-calendar-event"></i> <b>Date:</b> ${new Date(sch.WorkDate).toLocaleDateString()}</p>
+                    <p class="mb-1"><i class="bi bi-clock"></i> <b>Shift Time:</b> ${sch.WorkShift?.StartTime ?? '--'} - ${sch.WorkShift?.EndTime ?? '--'}</p>
+                </div>
+                <div class="border rounded-3 p-3 mb-3 bg-light">
+                    <h6 class="fw-bold mb-3">Attendance</h6>
+                    <p class="mb-2"><i class="bi bi-box-arrow-in-right"></i> <b>Check-in:</b>
+                        ${sch.CheckInTime ? new Date(sch.CheckInTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '--'}
+                        <span class="badge ${sch.CheckInStatus === 'OnTime' ? 'bg-success' : 'bg-warning text-dark'} ms-2">${sch.CheckInStatus ?? 'N/A'}</span>
+                    </p>
+                    <p class="mb-2"><i class="bi bi-box-arrow-left"></i> <b>Check-out:</b>
+                        ${sch.CheckOutTime ? new Date(sch.CheckOutTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '--'}
+                        <span class="badge ${sch.CheckOutStatus === 'OnTime' ? 'bg-success' : 'bg-warning text-dark'} ms-2">${sch.CheckOutStatus ?? 'N/A'}</span>
+                    </p>
+                </div>
+                <div class="border-top pt-3">
+                    <p class="mb-0"><i class="bi bi-hourglass-split"></i> <b>Total Hours Worked:</b> ${sch.HoursWorked ?? 0} hrs</p>
+                </div>
+            `;
+            document.getElementById('scheduleDetailBody').innerHTML = html;
+        }
+
 </script>
 }

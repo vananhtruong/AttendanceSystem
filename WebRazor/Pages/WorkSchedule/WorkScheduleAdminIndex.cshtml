@@ -1,0 +1,314 @@
+﻿@page
+@model WorkScheduleAdminIndexModel
+@{
+    ViewData["Title"] = "Work Schedule Management";
+    var daysOfWeek = Enumerable.Range(0, 7).Select(i => Model.WeekStart.AddDays(i)).ToList();
+    var shiftNames = Model.WorkSchedules.Select(x => x.WorkShiftName).Distinct().OrderBy(x => x).ToList();
+    var scheduleMap = Model.WorkSchedules
+        .GroupBy(x => (x.WorkShiftName, x.WorkDate.Date))
+        .ToDictionary(g => g.Key, g => g.ToList());
+}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    .schedule-table {
+        background: #fff;
+        border-radius: 1.2rem;
+        box-shadow: 0 4px 24px rgba(24,28,47,0.08);
+        overflow: hidden;
+    }
+
+        .schedule-table th, .schedule-table td {
+            text-align: center;
+            vertical-align: middle;
+            padding: 0.7rem 0.3rem;
+        }
+
+    .badge-status {
+        border-radius: 0.5rem;
+        font-size: 0.85rem;
+        padding: 0.3em 0.6em;
+        display: inline-block;
+        margin: 0.1em;
+        cursor: pointer;
+    }
+
+    .badge-ontime {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-late {
+        background: #fef9c3;
+        color: #92400e;
+    }
+
+    .badge-absent {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-pending {
+        background: #e0e7ef;
+        color: #3730a3;
+    }
+</style>
+
+<div class="container py-4">
+    <h2 class="fw-bold mb-4"><i class="bi bi-calendar-week me-2"></i>Work Schedule Management</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <form method="get" class="d-flex align-items-center gap-3">
+            <label class="fw-bold">Week:</label>
+            <input type="week" class="form-control" style="max-width:180px;" name="SelectedWeek" value="@Model.SelectedWeekString" onchange="this.form.submit()" />
+            <span class="text-secondary">(@Model.WeekRangeString)</span>
+        </form>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createScheduleModal">
+            <i class="bi bi-plus-circle me-1"></i> Add Work Schedule
+        </button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table schedule-table">
+            <thead class="table-light">
+                <tr>
+                    <th>Shift</th>
+                    @foreach (var day in daysOfWeek)
+                    {
+                        <th>@day.ToString("ddd")<br />@day.ToString("dd/MM")</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var shift in shiftNames)
+                {
+                    <tr>
+                        <td class="fw-bold">@shift</td>
+                        @foreach (var day in daysOfWeek)
+                        {
+                            <td>
+                                @if (scheduleMap.TryGetValue((shift, day.Date), out var schedules))
+                                {
+                                    @foreach (var sch in schedules)
+                                    {
+                                        var statusClass = sch.Status switch
+                                        {
+                                            "CheckedIn" => "badge-ontime",
+                                            "Late" => "badge-late",
+                                            "Absent" => "badge-absent",
+                                            _ => "badge-pending"
+                                        };
+                                        <div>
+                                            <span class="badge badge-status @statusClass"
+                                                  onclick="openScheduleDetail('@day.Date.ToString("yyyy-MM-dd")', '@shift')">
+                                                @sch.UserFullName (@sch.Status)
+                                            </span>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Create -->
+<div class="modal fade" id="createScheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Work Schedule</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createScheduleForm">
+                    <div class="mb-3">
+                        <label class="form-label">Employees</label>
+                        <input type="text" id="employeeSearch" class="form-control mb-2" placeholder="Search employee...">
+                        <select id="employeeSelect" class="form-select" multiple size="8"></select>
+                        <small class="text-muted">Giữ Ctrl để chọn nhiều nhân viên</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" id="startDate" class="form-control" required min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">End Date</label>
+                        <input type="date" id="endDate" class="form-control" required min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Shift</label>
+                        <select id="workShift" class="form-select">
+                            <option value="1">Ca 1 (08:00 - 12:00)</option>
+                            <option value="2">Ca 2 (13:00 - 17:00)</option>
+                            <option value="3">Ca bonus (18:00 - 21:00)</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createSchedule()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal chi tiết -->
+<div class="modal fade" id="scheduleDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Work Schedule Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleDetailTable">
+                        <!-- JS render -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let employees = [];
+
+        document.getElementById('endDate').addEventListener('change', () => {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            if (start && end && end < start) {
+                alert("End date cannot be earlier than start date");
+                document.getElementById('endDate').value = start;
+            }
+        });
+
+        async function loadEmployees() {
+            const token = localStorage.getItem("accessToken");
+            if (!token) { alert("Token not found. Please login."); return; }
+
+            const res = await fetch('https://localhost:7117/api/Employee', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!res.ok) { alert('Failed to load employees'); return; }
+            employees = await res.json();
+            renderEmployeeOptions('');
+        }
+
+        function renderEmployeeOptions(filter) {
+            const select = document.getElementById('employeeSelect');
+            select.innerHTML = '';
+            employees
+                .filter(e => e.fullName.toLowerCase().includes(filter.toLowerCase()))
+                .forEach(e => {
+                    const opt = document.createElement('option');
+                    opt.value = e.id;
+                    opt.textContent = `${e.fullName} (${e.email})`;
+                    select.appendChild(opt);
+                });
+        }
+
+        document.getElementById('employeeSearch').addEventListener('input', e => {
+            renderEmployeeOptions(e.target.value);
+        });
+
+        async function createSchedule() {
+            const token = localStorage.getItem("accessToken");
+            const userIds = Array.from(document.getElementById('employeeSelect').selectedOptions).map(opt => parseInt(opt.value));
+
+            const payload = {
+                dtos: userIds.map(id => ({
+                    userId: id,
+                    workShiftId: parseInt(document.getElementById('workShift').value),
+                    status: "not yet"
+                })),
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value
+            };
+
+            const res = await fetch('https://localhost:7117/api/WorkSchedule/bulk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                location.reload();
+            } else {
+                const errorText = await res.text();
+                alert('Error creating schedule: ' + errorText);
+            }
+        }
+
+        async function openScheduleDetail(date, shift) {
+            const token = localStorage.getItem("accessToken");
+            const res = await fetch('https://localhost:7117/api/WorkSchedule', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) { alert('Failed to load schedules'); return; }
+
+            const allSchedules = await res.json();
+            console.log("All schedules:", allSchedules);
+            console.log("Comparing date:", date, "shift:", shift);
+
+            const selected = allSchedules.filter(s =>
+                s.workDate.split('T')[0] === date && s.workShiftName === shift
+            );
+
+            console.log("Filtered:", selected);
+
+            const today = new Date().toISOString().split('T')[0];
+            const tbody = document.getElementById('scheduleDetailTable');
+            tbody.innerHTML = '';
+            selected.forEach(sch => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${sch.userFullName}</td>
+                    <td>${sch.status}</td>
+                    <td>
+                        ${date >= today ? `<button class="btn btn-danger btn-sm" onclick="deleteSchedule(${sch.id})">Delete</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            new bootstrap.Modal(document.getElementById('scheduleDetailModal')).show();
+        }
+
+        async function deleteSchedule(id) {
+            if (!confirm("Are you sure you want to delete this schedule?")) return;
+            const token = localStorage.getItem("accessToken");
+            const res = await fetch(`https://localhost:7117/api/WorkSchedule/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                alert("Deleted successfully");
+                location.reload();
+            } else {
+                alert("Failed to delete schedule");
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadEmployees);
+    </script>
+}

@@ -49,23 +49,28 @@ let currentPage = 1;
 const pageSize = 10;
 
 async function fetchEmployees(keyword, page) {
-    if (!window.apiHelper.token) {
+    if (!window.apiHelper || !window.apiHelper.token) {
         document.getElementById('employeeTableContainer').innerHTML = '<div class="alert alert-danger">You are not logged in. Please login as Admin.</div>';
         return;
     }
     
-    const params = {
-        '$filter': `contains(tolower(FullName),'${keyword.toLowerCase()}') or contains(tolower(Email),'${keyword.toLowerCase()}')`,
-        '$top': pageSize,
-        '$skip': (page - 1) * pageSize,
-        '$count': 'true'
-    };
-    
-    const data = await window.apiHelper.getOData('/odata/Users', params);
-    if (data) {
-        renderEmployeeTable(data.value, data['@@odata.count'] || data.value.length, page, pageSize, keyword);
-    } else {
-        document.getElementById('employeeTableContainer').innerHTML = '<div class="alert alert-danger">Failed to load employees. Please try again.</div>';
+    try {
+        const params = {
+            '$filter': `contains(tolower(FullName),'${keyword.toLowerCase()}') or contains(tolower(Email),'${keyword.toLowerCase()}')`,
+            '$top': pageSize,
+            '$skip': (page - 1) * pageSize,
+            '$count': 'true'
+        };
+        
+        const data = await window.apiHelper.getOData('/odata/Users', params);
+        if (data) {
+            renderEmployeeTable(data.value, data['@@odata.count'] || data.value.length, page, pageSize, keyword);
+        } else {
+            document.getElementById('employeeTableContainer').innerHTML = '<div class="alert alert-danger">Failed to load employees. Please try again.</div>';
+        }
+    } catch (error) {
+        console.error('Error fetching employees:', error);
+        document.getElementById('employeeTableContainer').innerHTML = '<div class="alert alert-danger">Error loading employees. Please try again.</div>';
     }
 }
 
@@ -86,20 +91,19 @@ function renderEmployeeTable(employees, total, page, pageSize, keyword) {
         for (const emp of employees) {
             html += `<tr>
                 <td>${++index}</td>
-                <td>${emp.FullName}</td>
-                <td>${emp.Email}</td>
-                <td>${emp.IsBanned ? '<span class="badge badge-banned">Banned</span>' : '<span class="badge badge-active">Active</span>'}</td>
+                <td>${emp.fullName}</td>
+                <td>${emp.email}</td>
+                <td>${emp.isBanned ? '<span class="badge badge-banned">Banned</span>' : '<span class="badge badge-active">Active</span>'}</td>
                 <td>`;
-            if (!emp.IsBanned) {
-                html += `<button class="btn btn-outline-danger btn-sm" onclick="banEmployee(${emp.Id}, '${keyword}', ${page})"><i class="bi bi-person-x"></i> Ban</button>`;
+            if (!emp.isBanned) {
+                html += `<button class="btn btn-outline-danger btn-sm" onclick="banEmployee(${emp.id}, '${keyword}', ${page})"><i class="bi bi-person-x"></i> Ban</button>`;
             } else {
-                html += `<button class="btn btn-outline-success btn-sm" onclick="unbanEmployee(${emp.Id}, '${keyword}', ${page})"><i class="bi bi-person-check"></i> Unban</button>`;
+                html += `<button class="btn btn-outline-success btn-sm" onclick="unbanEmployee(${emp.id}, '${keyword}', ${page})"><i class="bi bi-person-check"></i> Unban</button>`;
             }
-            html += `<a href="#" class="btn btn-outline-info btn-sm ms-1" onclick="showDetail('${emp.FullName}', '${emp.Email}', '${emp.IsBanned ? 'Banned' : 'Active'}')"><i class="bi bi-info-circle"></i> Detail</a></td></tr>`;
+            html += `<a href="#" class="btn btn-outline-info btn-sm ms-1" onclick="showDetail(${emp.id}, '${emp.fullName}', '${emp.email}', '${emp.isBanned ? 'Banned' : 'Active'}')"><i class="bi bi-info-circle"></i> Detail</a></td></tr>`;
         }
     }
     html += `</tbody></table>`;
-    // Pagination
     const totalPages = Math.ceil(total / pageSize);
     html += `<nav aria-label="Employee pagination"><ul class="pagination">`;
     for (let i = 1; i <= totalPages; i++) {
@@ -115,47 +119,60 @@ function gotoPage(page, keyword) {
 }
 
 async function banEmployee(id, keyword, page) {
-    const success = await window.apiHelper.put(`/api/Employee/ban/${id}`, {});
-    if (success) {
-        showToast('Ban successful!');
-        fetchEmployees(keyword, page);
-    } else {
+    try {
+        const success = await window.apiHelper.put(`/api/Employee/ban/${id}`, {});
+        if (success) {
+            showToast('Ban successful!');
+            fetchEmployees(keyword, page);
+        } else {
+            showToast('Ban failed!');
+        }
+    } catch (error) {
+        console.error('Error banning employee:', error);
         showToast('Ban failed!');
     }
 }
 
 async function unbanEmployee(id, keyword, page) {
-    const success = await window.apiHelper.put(`/api/Employee/unban/${id}`, {});
-    if (success) {
-        showToast('Unban successful!');
-        fetchEmployees(keyword, page);
-    } else {
+    try {
+        const success = await window.apiHelper.put(`/api/Employee/unban/${id}`, {});
+        if (success) {
+            showToast('Unban successful!');
+            fetchEmployees(keyword, page);
+        } else {
+            showToast('Unban failed!');
+        }
+    } catch (error) {
+        console.error('Error unbanning employee:', error);
         showToast('Unban failed!');
     }
 }
+
 function showToast(msg) {
     document.getElementById('toastMsg').innerText = msg;
     var toast = document.getElementById('toastSuccess');
     toast.style.display = 'block';
     setTimeout(() => { toast.style.display = 'none'; }, 2500);
 }
+
 function hideToast() {
     document.getElementById('toastSuccess').style.display = 'none';
 }
-function showDetail(name, email, status) {
-    let html = `<div><b>Full Name:</b> ${name}</div>
+
+function showDetail(id, name, email, status) {
+    let html = `
+        <div><b>ID:</b> ${id}</div>
+        <div><b>Full Name:</b> ${name}</div>
         <div><b>Email:</b> ${email}</div>
         <div><b>Status:</b> ${status}</div>`;
     document.getElementById('employeeDetailBody').innerHTML = html;
     var modal = new bootstrap.Modal(document.getElementById('employeeDetailModal'));
     modal.show();
 }
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-}
+
 // Initial load
-fetchEmployees('', 1);
+document.addEventListener('DOMContentLoaded', function() {
+    fetchEmployees('', 1);
+});
 </script>
-} 
+}

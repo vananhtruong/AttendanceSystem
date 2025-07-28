@@ -20,3 +20,67 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+/* Profile Page Styles */
+.profile-card {
+  border-radius: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
+.profile-card:hover {
+  transform: translateY(-2px);
+}
+
+.profile-card .card-header {
+  border-radius: 15px 15px 0 0 !important;
+  border-bottom: none;
+}
+
+.profile-info {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 15px;
+}
+
+.face-id-card {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border-radius: 15px;
+}
+
+.camera-modal .modal-content {
+  border-radius: 15px;
+  border: none;
+}
+
+.camera-modal .modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 15px 15px 0 0;
+}
+
+#video, #capturedImg {
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-camera {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 25px;
+  padding: 10px 25px;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.btn-camera:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.alert {
+  border-radius: 10px;
+  border: none;
+}
