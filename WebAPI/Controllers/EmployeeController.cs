@@ -26,67 +26,115 @@ namespace WebAPI.Controllers
         [EnableQuery]
         public async Task<IActionResult> GetAllEmployees()
         {
-            var employees = await _userRepo.GetAllAsync();
-            var result = employees.Where(e => e.Role == "Employee").ToList();
-            var dto = _mapper.Map<List<UserDTO>>(result);
-            return Ok(dto);
+            try
+            {
+                var employees = await _userRepo.GetAllAsync();
+                var result = employees.Where(e => e.Role == "Employee").ToList();
+                var dto = _mapper.Map<List<UserDTO>>(result);
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            }
         }
 
         // GET: api/Employee/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetEmployeeById(int id)
         {
-            var user = await _userRepo.GetByIdAsync(id);
-            if (user == null || user.Role != "Employee")
-                return NotFound();
-            var dto = _mapper.Map<UserDTO>(user);
-            return Ok(dto);
+            try
+            {
+                var user = await _userRepo.GetByIdAsync(id);
+                if (user == null || user.Role != "Employee")
+                    return NotFound(new { error = "Employee not found" });
+                var dto = _mapper.Map<UserDTO>(user);
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            }
         }
 
         // PUT: api/Employee/ban/{id}
         [HttpPut("ban/{id}")]
         public async Task<IActionResult> BanEmployee(int id)
         {
-            var user = await _userRepo.GetByIdAsync(id);
-            if (user == null || user.Role != "Employee")
-                return NotFound();
-            if (user.IsBanned)
-                return BadRequest("Employee is already banned.");
-            user.IsBanned = true;
-            await _userRepo.UpdateUserAsync(user);
-            return Ok("Employee banned successfully");
+            try
+            {
+                var user = await _userRepo.GetByIdAsync(id);
+                if (user == null || user.Role != "Employee")
+                    return NotFound(new { error = "Employee not found" });
+                if (user.IsBanned)
+                    return BadRequest(new { error = "Employee is already banned" });
+                user.IsBanned = true;
+                await _userRepo.UpdateUserAsync(user);
+                return Ok(new { message = "Employee banned successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            }
         }
 
         // PUT: api/Employee/unban/{id}
         [HttpPut("unban/{id}")]
         public async Task<IActionResult> UnbanEmployee(int id)
         {
-            var user = await _userRepo.GetByIdAsync(id);
-            if (user == null || user.Role != "Employee")
-                return NotFound();
-            if (!user.IsBanned)
-                return BadRequest("Employee is not banned.");
-            user.IsBanned = false;
-            await _userRepo.UpdateUserAsync(user);
-            return Ok("Employee unbanned successfully");
+            try
+            {
+                var user = await _userRepo.GetByIdAsync(id);
+                if (user == null || user.Role != "Employee")
+                    return NotFound(new { error = "Employee not found" });
+                if (!user.IsBanned)
+                    return BadRequest(new { error = "Employee is not banned" });
+                user.IsBanned = false;
+                await _userRepo.UpdateUserAsync(user);
+                return Ok(new { message = "Employee unbanned successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            }
         }
 
         // GET: api/Employee/search?keyword=abc
         [HttpGet("search")]
         public async Task<IActionResult> SearchEmployee([FromQuery] string keyword)
         {
-            var employees = await _userRepo.SearchAsync(keyword);
-            var result = employees.Where(e => e.Role == "Employee").ToList();
-            var dto = _mapper.Map<List<UserDTO>>(result);
-            return Ok(dto);
+            try
+            {
+                if (string.IsNullOrWhiteSpace(keyword))
+                {
+                    return await GetAllEmployees();
+                }
+
+                var employees = await _userRepo.SearchAsync(keyword);
+                var result = employees.Where(e => e.Role == "Employee").ToList();
+                var dto = _mapper.Map<List<UserDTO>>(result);
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            }
         }
+
         [HttpGet("count")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetEmployeeCount()
         {
-            var employees = await _userRepo.GetAllAsync();
-            var count = employees.Count(e => e.Role == "Employee");
-            return Ok(count);
+            try
+            {
+                var employees = await _userRepo.GetAllAsync();
+                var count = employees.Count(e => e.Role == "Employee");
+                return Ok(count);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            }
         }
     }
 } 

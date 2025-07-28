@@ -1,0 +1,531 @@
+@page
+@model MachineAttendanceModel
+@{
+    ViewData["Title"] = "Attendance Machine";
+    Layout = "_LayoutAuth";
+}
+
+<style>
+    .attendance-machine {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    
+    .machine-container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        overflow: hidden;
+        max-width: 800px;
+        width: 100%;
+    }
+    
+    .machine-header {
+        background: #2c3e50;
+        color: white;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .camera-section {
+        position: relative;
+        background: #000;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    #video {
+        width: 100%;
+        max-width: 640px;
+        height: auto;
+    }
+    
+    #canvas {
+        display: none;
+    }
+    
+    .camera-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 300px;
+        height: 300px;
+        border: 3px solid #00ff00;
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    
+    .controls-section {
+        padding: 30px;
+        text-align: center;
+    }
+    
+    .btn-attendance {
+        padding: 15px 40px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 50px;
+        border: none;
+        margin: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-checkin {
+        background: #27ae60;
+        color: white;
+    }
+    
+    .btn-checkin:hover {
+        background: #229954;
+        transform: translateY(-2px);
+    }
+    
+    .btn-checkout {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .btn-checkout:hover {
+        background: #c0392b;
+        transform: translateY(-2px);
+    }
+    
+    .btn-capture {
+        background: #3498db;
+        color: white;
+    }
+    
+    .btn-capture:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+    }
+    
+    .btn-retry {
+        background: #f39c12;
+        color: white;
+    }
+    
+    .btn-retry:hover {
+        background: #e67e22;
+        transform: translateY(-2px);
+    }
+    
+    .status-display {
+        margin: 20px 0;
+        padding: 15px;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+    
+    .status-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .status-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .status-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+    
+    .user-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 15px 0;
+        display: none;
+    }
+    
+    .loading {
+        display: none;
+        text-align: center;
+        padding: 20px;
+    }
+    
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+    }
+    
+    @@keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<div class="attendance-machine">
+    <div class="machine-container">
+        <div class="machine-header">
+            <h1><i class="bi bi-camera-video-fill me-2"></i>Attendance Machine</h1>
+            <p class="mb-0">Face Recognition Attendance System</p>
+        </div>
+        
+        <div class="camera-section">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+            <div class="camera-overlay"></div>
+        </div>
+        
+        <div class="controls-section">
+            <div id="statusDisplay" class="status-display status-info" style="display: none;">
+                <span id="statusMessage">Ready to capture</span>
+            </div>
+            
+            <div id="userInfo" class="user-info">
+                <h5><i class="bi bi-person-circle me-2"></i>Employee Information</h5>
+                <p><strong>Name:</strong> <span id="employeeName">-</span></p>
+                <p><strong>Current Shift:</strong> <span id="currentShift">-</span></p>
+                <p><strong>Shift Time:</strong> <span id="shiftTime">-</span></p>
+                <p><strong>Status:</strong> <span id="attendanceStatus">-</span></p>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Processing...</p>
+            </div>
+            
+            <div id="controls">
+                <button id="captureBtn" class="btn-attendance btn-capture">
+                    <i class="bi bi-camera me-2"></i>Capture Photo
+                </button>
+                <button id="retryBtn" class="btn-attendance btn-retry" style="display: none;">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Retry Recognition
+                </button>
+                <button id="checkinBtn" class="btn-attendance btn-checkin" style="display: none;">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Check In
+                </button>
+                <button id="checkoutBtn" class="btn-attendance btn-checkout" style="display: none;">
+                    <i class="bi bi-box-arrow-left me-2"></i>Check Out
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let stream = null;
+let currentUser = null;
+let currentSchedule = null;
+let capturedImage = null;
+
+// Get API base URL from configuration
+const API_BASE_URL = document.querySelector('meta[name="api-base-url"]')?.getAttribute('content') || 'https://localhost:7117/';
+
+// Get access token from server-side
+const ACCESS_TOKEN = '@Model.AccessToken';
+
+console.log('API Base URL:', API_BASE_URL);
+console.log('Access Token:', ACCESS_TOKEN ? 'Token exists' : 'No token found');
+
+// Initialize camera
+async function initCamera() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: 'user'
+            } 
+        });
+        document.getElementById('video').srcObject = stream;
+        showStatus('Camera ready. Please capture your photo.', 'info');
+    } catch (error) {
+        console.error('Camera error:', error);
+        showStatus('Camera access denied. Please allow camera access.', 'error');
+    }
+}
+
+// Capture photo
+function capturePhoto() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+    
+    capturedImage = canvas.toDataURL('image/jpeg', 0.8);
+    showStatus('Photo captured successfully!', 'success');
+    
+    // Process the captured image
+    processFaceRecognition();
+}
+
+// Process face recognition
+async function processFaceRecognition() {
+    showLoading(true);
+    
+    try {
+        // Check if we have access token
+        if (!ACCESS_TOKEN) {
+            throw new Error('No access token found. Please login again.');
+        }
+
+        // Convert base64 to blob
+        const response = await fetch(capturedImage);
+        const blob = await response.blob();
+        
+        // Create form data
+        const formData = new FormData();
+        formData.append('FaceImage', blob, 'face.jpg');
+        
+        console.log('Sending request to:', `${API_BASE_URL}api/FaceAttendance/checkin`);
+        console.log('Authorization header:', `Bearer ${ACCESS_TOKEN.substring(0, 20)}...`);
+        
+        // Send to API
+        const apiResponse = await fetch(`${API_BASE_URL}api/FaceAttendance/checkin`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Authorization': `Bearer ${ACCESS_TOKEN}`
+            }
+        });
+        
+        console.log('API Response Status:', apiResponse.status);
+        console.log('API Response Headers:', Object.fromEntries(apiResponse.headers.entries()));
+        
+        if (!apiResponse.ok) {
+            const errorText = await apiResponse.text();
+            console.error('API Error Response:', errorText);
+            throw new Error(`API Error: ${apiResponse.status} - ${errorText}`);
+        }
+        
+        const result = await apiResponse.json();
+        console.log('API Response:', result);
+        
+        if (result.success && result.data && result.data.user && result.data.schedule) {
+            currentUser = result.data.user;
+            currentSchedule = result.data.schedule;
+            
+            displayUserInfo();
+            showAttendanceButtons();
+            showStatus(`Welcome, ${currentUser.fullName}!`, 'success');
+        } else {
+            // Reset current user and schedule when recognition fails
+            currentUser = null;
+            currentSchedule = null;
+            
+            // Hide user info and buttons
+            document.getElementById('userInfo').style.display = 'none';
+            document.getElementById('checkinBtn').style.display = 'none';
+            document.getElementById('checkoutBtn').style.display = 'none';
+            document.getElementById('retryBtn').style.display = 'inline-block';
+            
+            // Show error message
+            const errorMessage = result.message || 'Face recognition failed. Please try again.';
+            showStatus(errorMessage, 'error');
+        }
+    } catch (error) {
+        console.error('Face recognition error:', error);
+        
+        // Reset current user and schedule when error occurs
+        currentUser = null;
+        currentSchedule = null;
+        
+        // Hide user info and buttons
+        document.getElementById('userInfo').style.display = 'none';
+        document.getElementById('checkinBtn').style.display = 'none';
+        document.getElementById('checkoutBtn').style.display = 'none';
+        document.getElementById('retryBtn').style.display = 'inline-block';
+        
+        // Show error message
+        showStatus(`Face recognition failed: ${error.message}`, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Display user information
+function displayUserInfo() {
+    if (currentUser && currentSchedule) {
+        document.getElementById('employeeName').textContent = currentUser.fullName;
+        document.getElementById('currentShift').textContent = currentSchedule.shiftName;
+        document.getElementById('shiftTime').textContent = `${currentSchedule.shiftStart} - ${currentSchedule.shiftEnd}`;
+        document.getElementById('attendanceStatus').textContent = currentSchedule.attendanceStatus;
+        document.getElementById('userInfo').style.display = 'block';
+    }
+}
+
+// Show attendance buttons based on current status
+function showAttendanceButtons() {
+    const checkinBtn = document.getElementById('checkinBtn');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const retryBtn = document.getElementById('retryBtn');
+    
+    // Hide retry button when showing attendance buttons
+    retryBtn.style.display = 'none';
+    
+    if (currentSchedule) {
+        if (currentSchedule.canCheckIn) {
+            checkinBtn.style.display = 'inline-block';
+        }
+        if (currentSchedule.canCheckOut) {
+            checkoutBtn.style.display = 'inline-block';
+        }
+    }
+}
+
+// Check in
+async function checkIn() {
+    if (!currentUser || !currentSchedule) return;
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}api/FaceAttendance/checkin-confirm`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${ACCESS_TOKEN}`
+            },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                workScheduleId: currentSchedule.id,
+                imageData: capturedImage
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API Error: ${response.status} - ${errorText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showStatus('Check-in successful!', 'success');
+            resetState();
+        } else {
+            showStatus(result.message || 'Check-in failed', 'error');
+        }
+    } catch (error) {
+        console.error('Check-in error:', error);
+        showStatus(`Check-in failed: ${error.message}`, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Check out
+async function checkOut() {
+    if (!currentUser || !currentSchedule) return;
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}api/FaceAttendance/checkout`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${ACCESS_TOKEN}`
+            },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                workScheduleId: currentSchedule.id,
+                imageData: capturedImage
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API Error: ${response.status} - ${errorText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showStatus('Check-out successful!', 'success');
+            resetState();
+        } else {
+            showStatus(result.message || 'Check-out failed', 'error');
+        }
+    } catch (error) {
+        console.error('Check-out error:', error);
+        showStatus(`Check-out failed: ${error.message}`, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Reset state
+function resetState() {
+    currentUser = null;
+    currentSchedule = null;
+    capturedImage = null;
+    
+    document.getElementById('userInfo').style.display = 'none';
+    document.getElementById('checkinBtn').style.display = 'none';
+    document.getElementById('checkoutBtn').style.display = 'none';
+    document.getElementById('retryBtn').style.display = 'none';
+    
+    showStatus('Ready to capture', 'info');
+}
+
+// Retry face recognition
+function retryFaceRecognition() {
+    if (capturedImage) {
+        processFaceRecognition();
+    } else {
+        showStatus('Please capture a photo first', 'error');
+    }
+}
+
+// Utility functions
+function showStatus(message, type) {
+    const statusDisplay = document.getElementById('statusDisplay');
+    const statusMessage = document.getElementById('statusMessage');
+    
+    statusDisplay.className = `status-display status-${type}`;
+    statusMessage.textContent = message;
+    statusDisplay.style.display = 'block';
+}
+
+function showLoading(show) {
+    document.getElementById('loading').style.display = show ? 'block' : 'none';
+    document.getElementById('controls').style.display = show ? 'none' : 'block';
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we have access token
+    if (!ACCESS_TOKEN) {
+        showStatus('No access token found. Please login again.', 'error');
+        return;
+    }
+    
+    initCamera();
+    
+    document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+    document.getElementById('retryBtn').addEventListener('click', retryFaceRecognition);
+    document.getElementById('checkinBtn').addEventListener('click', checkIn);
+    document.getElementById('checkoutBtn').addEventListener('click', checkOut);
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+});
+</script> 

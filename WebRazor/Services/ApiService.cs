@@ -13,6 +13,7 @@ namespace WebRazor.Services
         Task<T?> PutAsync<T>(string endpoint, object data, string? accessToken = null);
         Task<bool> DeleteAsync(string endpoint, string? accessToken = null);
         Task<HttpResponseMessage> PostRawAsync(string endpoint, object data, string? accessToken = null);
+        Task<HttpResponseMessage> GetRawAsync(string endpoint, string? accessToken = null);
     }
 
     public class ApiService : IApiService
@@ -130,6 +131,17 @@ namespace WebRazor.Services
             }
 
             return await client.PostAsJsonAsync(endpoint, data);
+        }
+
+        public async Task<HttpResponseMessage> GetRawAsync(string endpoint, string? accessToken = null)
+        {
+            var client = _httpClientFactory.CreateClient("api");
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            }
+
+            return await client.GetAsync(endpoint);
         }
     }
 } 

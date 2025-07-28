@@ -61,6 +61,19 @@ namespace BusinessObject
                 .WithMany()
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // WorkSchedule foreign key relationships
+            modelBuilder.Entity<WorkSchedule>()
+                .HasOne(ws => ws.User)
+                .WithMany()
+                .HasForeignKey(ws => ws.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<WorkSchedule>()
+                .HasOne(ws => ws.WorkShift)
+                .WithMany()
+                .HasForeignKey(ws => ws.WorkShiftId)
+                .OnDelete(DeleteBehavior.Restrict); // Không cho phép xóa WorkShift nếu có WorkSchedule đang sử dụng
         }
     }
 }

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using WebAPI.Services;
 using BusinessObject.DTOs;
 using Repository;
+using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 
 namespace WebAPI.Controllers
 {
@@ -17,19 +19,25 @@ namespace WebAPI.Controllers
         private readonly IWorkScheduleRepository _workScheduleRepo;
         private readonly IAttendanceRecordRepository _attendanceRecordRepo;
         private readonly IWorkScheduleEvaluatorService _evaluator;
+        private readonly IUserRepository _userRepository;
+        private readonly IWebHostEnvironment _environment;
 
         public FaceAttendanceController(
             IFaceRecognitionService faceRecognitionService,
             ILogger<FaceAttendanceController> logger,
             IWorkScheduleRepository workScheduleRepo,
             IAttendanceRecordRepository attendanceRecordRepo,
-            IWorkScheduleEvaluatorService evaluator)
+            IWorkScheduleEvaluatorService evaluator,
+            IUserRepository userRepository,
+            IWebHostEnvironment environment)
         {
             _faceRecognitionService = faceRecognitionService;
             _logger = logger;
             _workScheduleRepo = workScheduleRepo;
             _attendanceRecordRepo = attendanceRecordRepo;
             _evaluator = evaluator;
+            _userRepository = userRepository;
+            _environment = environment;
         }
 
         /// <summary>
@@ -53,11 +61,98 @@ namespace WebAPI.Controllers
 
                 return Ok(ApiResponseDto.SuccessResult(result));
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Face recognition failed");
+                return BadRequest(ApiResponseDto.ErrorResult(ex.Message));
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during check-in");
                 return StatusCode(500,
                     ApiResponseDto.ErrorResult("Internal server error"));
+            }
+        }
+
+        /// <summary>
+        /// Confirm check-in after face recognition
+        /// </summary>
+        /// <param name="request">Check-in confirmation data</param>
+        /// <returns>Check-in result</returns>
+        [HttpPost("checkin-confirm")]
+        [ProducesResponseType(typeof(ApiResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseDto), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponseDto>> ConfirmCheckIn([FromBody] CheckInConfirmRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ApiResponseDto.ErrorResult("Invalid input", ModelState));
+
+                // Convert base64 image to stream
+                var imageBytes = Convert.FromBase64String(request.ImageData.Split(',')[1]);
+                using var stream = new MemoryStream(imageBytes);
+
+                var result = await _faceRecognitionService.ProcessCheckInAsync(
+                    request.UserId, request.WorkScheduleId, stream);
+
+                if (result)
+                {
+                    // Update work schedule status
+                    await _faceRecognitionService.UpdateWorkScheduleStatusAsync(request.WorkScheduleId);
+
+                    return Ok(ApiResponseDto.SuccessResult("Check-in successful"));
+                }
+                else
+                {
+                    return BadRequest(ApiResponseDto.ErrorResult("Check-in failed"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during check-in confirmation");
+                return StatusCode(500, ApiResponseDto.ErrorResult("Check-in failed"));
+            }
+        }
+
+        /// <summary>
+        /// Check-out using face recognition
+        /// </summary>
+        /// <param name="request">Check-out data</param>
+        /// <returns>Check-out result</returns>
+        [HttpPost("checkout")]
+        [ProducesResponseType(typeof(ApiResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseDto), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ApiResponseDto>> CheckOut([FromBody] CheckOutRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ApiResponseDto.ErrorResult("Invalid input", ModelState));
+
+                // Convert base64 image to stream
+                var imageBytes = Convert.FromBase64String(request.ImageData.Split(',')[1]);
+                using var stream = new MemoryStream(imageBytes);
+
+                var result = await _faceRecognitionService.ProcessCheckOutAsync(
+                    request.UserId, request.WorkScheduleId, stream);
+
+                if (result)
+                {
+                    // Update work schedule status
+                    await _faceRecognitionService.UpdateWorkScheduleStatusAsync(request.WorkScheduleId);
+
+                    return Ok(ApiResponseDto.SuccessResult("Check-out successful"));
+                }
+                else
+                {
+                    return BadRequest(ApiResponseDto.ErrorResult("Check-out failed"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during check-out");
+                return StatusCode(500, ApiResponseDto.ErrorResult("Check-out failed"));
             }
         }
 
@@ -224,6 +319,48 @@ namespace WebAPI.Controllers
                     ApiResponseDto.ErrorResult("Failed to remove face data"));
             }
         }
+
+        /// <summary>
+        /// Get face image for current user
+        /// </summary>
+        /// <returns>Face image file</returns>
+        [HttpGet("my-face-image")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponseDto), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetMyFaceImage()
+        {
+            try
+            {
+                // Get current user ID from token
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                    return Unauthorized(ApiResponseDto.ErrorResult("Invalid user token"));
+
+                var user = await _userRepository.GetByIdAsync(userId);
+                if (user?.FaceDescriptorJson == null)
+                    return NotFound(ApiResponseDto.ErrorResult("No face data found"));
+
+                // Parse face data to get image path
+                var faceData = JsonSerializer.Deserialize<JsonElement>(user.FaceDescriptorJson);
+                if (!faceData.TryGetProperty("imagePath", out var imagePathElement))
+                    return NotFound(ApiResponseDto.ErrorResult("Face image not found"));
+
+                var imagePath = imagePathElement.GetString();
+                var fullPath = Path.Combine(_environment.WebRootPath, "uploads", "faces", imagePath);
+
+                if (!System.IO.File.Exists(fullPath))
+                    return NotFound(ApiResponseDto.ErrorResult("Face image file not found"));
+
+                var imageBytes = await System.IO.File.ReadAllBytesAsync(fullPath);
+                return File(imageBytes, "image/jpeg");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving face image");
+                return StatusCode(500, ApiResponseDto.ErrorResult("Failed to retrieve face image"));
+            }
+        }
+
         /// <summary>
         /// Cập nhật trạng thái WorkSchedule dựa trên giờ check-in/check-out
         /// </summary>
@@ -273,5 +410,20 @@ namespace WebAPI.Controllers
                 return StatusCode(500, ApiResponseDto.ErrorResult("Failed to update WorkSchedule status"));
             }
         }
+    }
+
+    // Request DTOs
+    public class CheckInConfirmRequest
+    {
+        public int UserId { get; set; }
+        public int WorkScheduleId { get; set; }
+        public string ImageData { get; set; }
+    }
+
+    public class CheckOutRequest
+    {
+        public int UserId { get; set; }
+        public int WorkScheduleId { get; set; }
+        public string ImageData { get; set; }
     }
 }

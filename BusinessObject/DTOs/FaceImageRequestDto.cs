@@ -5,7 +5,7 @@ namespace BusinessObject.DTOs
 {
     public class FaceImageRequestDto
     {
-        [Required]
-        public IFormFile FaceImage { get; set; }
+        public IFormFile? FaceImage { get; set; }
+        public string? ImageData { get; set; } // Base64 encoded image data
     }
 } 

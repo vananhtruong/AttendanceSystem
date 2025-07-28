@@ -27,8 +27,9 @@ namespace WebAPI.Services
 
                 Console.WriteLine($"[DEBUG] ScheduleId={s.Id}, Status={s.Status}, Now={now}, End+1h={scheduleEndTime}");
 
-                if (s.Status == "not yet" && now > s.WorkDate.Date.AddHours(1))
-                //if (s.Status == "not yet" && now > scheduleEndTime)
+                /*                if (s.Status == "NotYet" && now > s.WorkDate.Date.AddHours(1))
+                */
+                if (s.Status == "NotYet" && now == s.WorkDate.Date)
                 {
                     s.Status = "Absent";
                     await _workScheduleRepo.UpdateAsync(s);
@@ -46,22 +47,22 @@ namespace WebAPI.Services
 
             Console.WriteLine($"[Hangfire] Checking schedules at {now}");
 
-            var toNotify = schedules.Where(s =>
-                s.Status == "not yet" &&
-                s.User != null && // tránh null
-                !string.IsNullOrEmpty(s.User.Email) && // tránh email rỗng
-                now > s.WorkDate.Date.Add(s.WorkShift.StartTime).AddMinutes(5) &&
-                now < s.WorkDate.Date.Add(s.WorkShift.StartTime).AddMinutes(15)
+            /* var toNotify = schedules.Where(s =>
+                 s.Status == "NotYet" &&
+                 s.User != null && // tránh null
+                 !string.IsNullOrEmpty(s.User.Email) && // tránh email rỗng
+                 now > s.WorkDate.Date.Add(s.WorkShift.StartTime).AddMinutes(5) &&
+                 now < s.WorkDate.Date.Add(s.WorkShift.StartTime).AddMinutes(15)
+             ).ToList();*/
+
+            var tonotify = schedules.Where(s =>
+            s.Status == "NotYet" &&
+            s.WorkDate.Date == DateTime.Today
             ).ToList();
 
-            //var toNotify = schedules.Where(s =>
-            //s.Status == "not yet" &&
-            //s.WorkDate.Date == DateTime.Today
-            //).ToList();
+            Console.WriteLine($"[DEBUG] Found {tonotify.Count} schedules to notify.");
 
-            Console.WriteLine($"[DEBUG] Found {toNotify.Count} schedules to notify.");
-
-            foreach (var schedule in toNotify)
+            foreach (var schedule in tonotify)
             {
                 Console.WriteLine($"[DEBUG] ScheduleId={schedule.Id}, UserId={schedule.UserId}, " +
                                   $"UserEmail={schedule.User?.Email}, " +

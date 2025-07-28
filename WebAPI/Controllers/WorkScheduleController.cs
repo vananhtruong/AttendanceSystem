@@ -16,6 +16,7 @@ namespace WebAPI.Controllers
         private readonly IMapper _mapper;
         private readonly IAttendanceRecordRepository _attendanceRecordRepository;
         private readonly IUserRepository _userRepo;
+        private readonly IWorkShiftRepository _workShiftRepo;
         private readonly IWorkScheduleEvaluatorService _evaluator;
 
         public WorkScheduleController(
@@ -23,12 +24,14 @@ namespace WebAPI.Controllers
             IMapper mapper,
             IAttendanceRecordRepository attendanceRecordRepository,
             IUserRepository userRepo,
+            IWorkShiftRepository workShiftRepo,
             IWorkScheduleEvaluatorService evaluator)
         {
             _workScheduleRepo = workScheduleRepo;
             _mapper = mapper;
             _attendanceRecordRepository = attendanceRecordRepository;
             _userRepo = userRepo;
+            _workShiftRepo = workShiftRepo;
             _evaluator = evaluator;
         }
 
@@ -53,6 +56,21 @@ namespace WebAPI.Controllers
         //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] WorkScheduleCreateDTO dto)
         {
+            // Validate User exists
+            var user = await _userRepo.GetByIdAsync(dto.UserId);
+            if (user == null)
+                return BadRequest($"User with ID {dto.UserId} does not exist.");
+
+            // Validate WorkShift exists
+            var workShift = await _workShiftRepo.GetByIdAsync(dto.WorkShiftId);
+            if (workShift == null)
+                return BadRequest($"WorkShift with ID {dto.WorkShiftId} does not exist.");
+
+            // Check if schedule already exists
+            var exists = await _workScheduleRepo.ExistsAsync(dto.UserId, dto.WorkDate, dto.WorkShiftId);
+            if (exists)
+                return BadRequest($"Work schedule already exists for user {user.FullName} on {dto.WorkDate:dd/MM/yyyy} with shift {workShift.Name}.");
+
             var schedule = _mapper.Map<WorkSchedule>(dto);
             await _workScheduleRepo.AddAsync(schedule);
             var result = _mapper.Map<WorkScheduleDTO>(schedule);
@@ -139,7 +157,6 @@ namespace WebAPI.Controllers
             return Ok(result);
         }
 
-
         [HttpGet("count")]
         //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetWorkScheduleCount()
@@ -147,6 +164,7 @@ namespace WebAPI.Controllers
             var schedules = await _workScheduleRepo.GetAllAsync();
             return Ok(schedules.Count());
         }
+        
         [HttpPost("bulk")]
         //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateBulk([FromBody] BulkWorkScheduleCreateDTO request)
@@ -160,12 +178,30 @@ namespace WebAPI.Controllers
 
             var created = new List<WorkScheduleDTO>();
             var skipped = new List<string>();
+            var errors = new List<string>();
 
             var allSchedules = await _workScheduleRepo.GetAllAsync();
             var users = await _userRepo.GetAllAsync(); // load trước danh sách nhân viên
+            var workShifts = await _workShiftRepo.GetAllAsync(); // load trước danh sách ca làm
 
             foreach (var dto in request.Dtos)
             {
+                // Validate User exists
+                var user = users.FirstOrDefault(u => u.Id == dto.UserId);
+                if (user == null)
+                {
+                    errors.Add($"User with ID {dto.UserId} does not exist.");
+                    continue;
+                }
+
+                // Validate WorkShift exists
+                var workShift = workShifts.FirstOrDefault(ws => ws.Id == dto.WorkShiftId);
+                if (workShift == null)
+                {
+                    errors.Add($"WorkShift with ID {dto.WorkShiftId} does not exist.");
+                    continue;
+                }
+
                 for (var date = request.StartDate.Value.Date; date <= request.EndDate.Value.Date; date = date.AddDays(1))
                 {
                     // Check trùng
@@ -174,8 +210,7 @@ namespace WebAPI.Controllers
                                                        s.WorkShiftId == dto.WorkShiftId);
                     if (exists)
                     {
-                        var name = users.FirstOrDefault(u => u.Id == dto.UserId)?.FullName ?? $"UserId {dto.UserId}";
-                        skipped.Add($"{name} đã có lịch {date:dd/MM}");
+                        skipped.Add($"{user.FullName} đã có lịch {date:dd/MM} với ca {workShift.Name}");
                         continue;
                     }
 
@@ -194,9 +229,7 @@ namespace WebAPI.Controllers
                 }
             }
 
-            return Ok(new { created, skipped });
+            return Ok(new { created, skipped, errors });
         }
-
-
     }
 }

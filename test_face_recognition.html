@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Face Recognition Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .result {
+        background: #f8f9fa;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        white-space: pre-wrap;
+        font-family: monospace;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+      input {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .camera-container {
+        text-align: center;
+        margin: 20px 0;
+      }
+      video {
+        max-width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      canvas {
+        display: none;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .status.info {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧠 Face Recognition System Test</h1>
+
+    <div class="test-section">
+      <h3>🔑 Authentication</h3>
+      <input
+        type="text"
+        id="tokenInput"
+        placeholder="Paste your JWT token here"
+      />
+      <button onclick="checkToken()">Check Token</button>
+      <div id="tokenResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>📷 Face Registration</h3>
+      <div class="camera-container">
+        <video id="video" width="640" height="480" autoplay></video>
+        <canvas id="canvas"></canvas>
+        <div id="capturedImage" style="display: none">
+          <img id="capturedImg" style="max-width: 100%; border-radius: 8px" />
+        </div>
+      </div>
+      <div class="status info" id="cameraStatus">
+        Click "Start Camera" to begin
+      </div>
+      <button onclick="startCamera()">Start Camera</button>
+      <button onclick="capturePhoto()">Capture Photo</button>
+      <button onclick="registerFace()">Register Face</button>
+      <button onclick="checkFaceStatus()">Check Face Status</button>
+      <div id="faceResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>🔍 Face Recognition</h3>
+      <button onclick="testFaceRecognition()">Test Face Recognition</button>
+      <div id="recognitionResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>📊 API Status</h3>
+      <button onclick="testApiStatus()">Test API Status</button>
+      <div id="apiResult" class="result"></div>
+    </div>
+
+    <script>
+      const API_BASE = "https://localhost:7117";
+      let stream = null;
+      let capturedImageData = null;
+
+      function showResult(elementId, data, isError = false) {
+        const element = document.getElementById(elementId);
+        element.textContent = JSON.stringify(data, null, 2);
+        element.className = `result ${isError ? "error" : "success"}`;
+      }
+
+      function showStatus(message, type = "info") {
+        const element = document.getElementById("cameraStatus");
+        element.textContent = message;
+        element.className = `status ${type}`;
+      }
+
+      function getToken() {
+        return document.getElementById("tokenInput").value;
+      }
+
+      function checkToken() {
+        const token = getToken();
+        if (!token) {
+          showResult("tokenResult", { error: "Please enter a token" }, true);
+          return;
+        }
+
+        try {
+          const parts = token.split(".");
+          if (parts.length !== 3) {
+            showResult(
+              "tokenResult",
+              { error: "Invalid JWT token format" },
+              true
+            );
+            return;
+          }
+
+          const payload = JSON.parse(atob(parts[1]));
+          const now = Math.floor(Date.now() / 1000);
+
+          const tokenInfo = {
+            header: JSON.parse(atob(parts[0])),
+            payload: payload,
+            isExpired: payload.exp < now,
+            expiresIn: payload.exp - now,
+            claims: {
+              name: payload.name,
+              email: payload.email,
+              role: payload.role,
+              nameid: payload.nameid,
+            },
+          };
+
+          showResult("tokenResult", tokenInfo);
+        } catch (error) {
+          showResult(
+            "tokenResult",
+            { error: `Token decode error: ${error.message}` },
+            true
+          );
+        }
+      }
+
+      async function startCamera() {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+            },
+          });
+          document.getElementById("video").srcObject = stream;
+          showStatus("Camera started successfully", "success");
+        } catch (error) {
+          showStatus(`Camera error: ${error.message}`, "error");
+        }
+      }
+
+      function capturePhoto() {
+        if (!stream) {
+          showStatus("Please start camera first", "error");
+          return;
+        }
+
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const context = canvas.getContext("2d");
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+
+        capturedImageData = canvas.toDataURL("image/jpeg", 0.8);
+        document.getElementById("capturedImg").src = capturedImageData;
+        document.getElementById("capturedImage").style.display = "block";
+        document.getElementById("video").style.display = "none";
+
+        showStatus("Photo captured successfully", "success");
+      }
+
+      async function registerFace() {
+        const token = getToken();
+        if (!token) {
+          showResult(
+            "faceResult",
+            { error: "Please enter a token first" },
+            true
+          );
+          return;
+        }
+
+        if (!capturedImageData) {
+          showResult(
+            "faceResult",
+            { error: "Please capture a photo first" },
+            true
+          );
+          return;
+        }
+
+        try {
+          // Convert base64 to file
+          const base64Data = capturedImageData.split(",")[1];
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const file = new File([byteArray], "face.jpg", {
+            type: "image/jpeg",
+          });
+
+          // Create FormData
+          const formData = new FormData();
+          formData.append("FaceImage", file);
+
+          const response = await fetch(
+            `${API_BASE}/api/FaceAttendance/register-my-face`,
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              body: formData,
+            }
+          );
+
+          const result = await response.json();
+          showResult("faceResult", result, !response.ok);
+        } catch (error) {
+          showResult("faceResult", { error: error.message }, true);
+        }
+      }
+
+      async function checkFaceStatus() {
+        const token = getToken();
+        if (!token) {
+          showResult(
+            "faceResult",
+            { error: "Please enter a token first" },
+            true
+          );
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `${API_BASE}/api/FaceAttendance/face-status`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+
+          const result = await response.json();
+          showResult("faceResult", result, !response.ok);
+        } catch (error) {
+          showResult("faceResult", { error: error.message }, true);
+        }
+      }
+
+      async function testFaceRecognition() {
+        const token = getToken();
+        if (!token) {
+          showResult(
+            "recognitionResult",
+            { error: "Please enter a token first" },
+            true
+          );
+          return;
+        }
+
+        if (!capturedImageData) {
+          showResult(
+            "recognitionResult",
+            { error: "Please capture a photo first" },
+            true
+          );
+          return;
+        }
+
+        try {
+          // Convert base64 to file
+          const base64Data = capturedImageData.split(",")[1];
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const file = new File([byteArray], "face.jpg", {
+            type: "image/jpeg",
+          });
+
+          // Create FormData
+          const formData = new FormData();
+          formData.append("FaceImage", file);
+
+          const response = await fetch(
+            `${API_BASE}/api/FaceAttendance/checkin`,
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              body: formData,
+            }
+          );
+
+          const result = await response.json();
+          showResult("recognitionResult", result, !response.ok);
+        } catch (error) {
+          showResult("recognitionResult", { error: error.message }, true);
+        }
+      }
+
+      async function testApiStatus() {
+        const token = getToken();
+        if (!token) {
+          showResult(
+            "apiResult",
+            { error: "Please enter a token first" },
+            true
+          );
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/api/Users`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            showResult("apiResult", {
+              success: true,
+              message: "API is working correctly",
+              userCount: data.length,
+            });
+          } else {
+            const errorText = await response.text();
+            showResult(
+              "apiResult",
+              {
+                error: `API Error: ${response.status} - ${errorText}`,
+              },
+              true
+            );
+          }
+        } catch (error) {
+          showResult("apiResult", { error: error.message }, true);
+        }
+      }
+
+      // Auto-fill token from localStorage/sessionStorage if available
+      window.addEventListener("load", function () {
+        const token =
+          localStorage.getItem("AccessToken") ||
+          sessionStorage.getItem("AccessToken");
+        if (token) {
+          document.getElementById("tokenInput").value = token;
+        }
+      });
+
+      // Cleanup on page unload
+      window.addEventListener("beforeunload", function () {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      });
+    </script>
+  </body>
+</html>

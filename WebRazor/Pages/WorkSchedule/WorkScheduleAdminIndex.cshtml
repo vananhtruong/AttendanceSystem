@@ -144,9 +144,7 @@
                     <div class="mb-3">
                         <label class="form-label">Shift</label>
                         <select id="workShift" class="form-select">
-                            <option value="1">Ca 1 (08:00 - 12:00)</option>
-                            <option value="2">Ca 2 (13:00 - 17:00)</option>
-                            <option value="3">Ca bonus (18:00 - 21:00)</option>
+                            <option value="">Loading shifts...</option>
                         </select>
                     </div>
                 </form>
@@ -188,6 +186,13 @@
 @section Scripts {
     <script>
         let employees = [];
+        let workShifts = [];
+
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEmployees();
+            loadWorkShifts();
+        });
 
         document.getElementById('endDate').addEventListener('change', () => {
             const start = document.getElementById('startDate').value;
@@ -202,13 +207,52 @@
             const token = localStorage.getItem("accessToken");
             if (!token) { alert("Token not found. Please login."); return; }
 
-            const res = await fetch('https://localhost:7117/api/Employee', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            try {
+                const res = await fetch('https://localhost:7117/api/Employee', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
 
-            if (!res.ok) { alert('Failed to load employees'); return; }
-            employees = await res.json();
-            renderEmployeeOptions('');
+                if (!res.ok) { 
+                    console.error('Failed to load employees:', res.status);
+                    return; 
+                }
+                employees = await res.json();
+                renderEmployeeOptions('');
+            } catch (error) {
+                console.error('Error loading employees:', error);
+            }
+        }
+
+        async function loadWorkShifts() {
+            const token = localStorage.getItem("accessToken");
+            if (!token) { alert("Token not found. Please login."); return; }
+
+            try {
+                const res = await fetch('https://localhost:7117/api/WorkShifts', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) { 
+                    console.error('Failed to load work shifts:', res.status);
+                    return; 
+                }
+                workShifts = await res.json();
+                renderWorkShiftOptions();
+            } catch (error) {
+                console.error('Error loading work shifts:', error);
+            }
+        }
+
+        function renderWorkShiftOptions() {
+            const select = document.getElementById('workShift');
+            select.innerHTML = '<option value="">Select a shift...</option>';
+            
+            workShifts.forEach(shift => {
+                const opt = document.createElement('option');
+                opt.value = shift.id;
+                opt.textContent = `${shift.name} (${shift.startTime} - ${shift.endTime})`;
+                select.appendChild(opt);
+            });
         }
 
         function renderEmployeeOptions(filter) {
@@ -230,32 +274,75 @@
 
         async function createSchedule() {
             const token = localStorage.getItem("accessToken");
+            if (!token) { 
+                alert("Token not found. Please login."); 
+                return; 
+            }
+
             const userIds = Array.from(document.getElementById('employeeSelect').selectedOptions).map(opt => parseInt(opt.value));
+            const workShiftId = parseInt(document.getElementById('workShift').value);
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            // Validation
+            if (userIds.length === 0) {
+                alert("Please select at least one employee.");
+                return;
+            }
+
+            if (!workShiftId) {
+                alert("Please select a work shift.");
+                return;
+            }
+
+            if (!startDate || !endDate) {
+                alert("Please select start and end dates.");
+                return;
+            }
 
             const payload = {
                 dtos: userIds.map(id => ({
                     userId: id,
-                    workShiftId: parseInt(document.getElementById('workShift').value),
-                    status: "not yet"
+                    workShiftId: workShiftId,
+                    status: "NotYet"
                 })),
-                startDate: document.getElementById('startDate').value,
-                endDate: document.getElementById('endDate').value
+                startDate: startDate,
+                endDate: endDate
             };
 
-            const res = await fetch('https://localhost:7117/api/WorkSchedule/bulk', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
+            try {
+                const res = await fetch('https://localhost:7117/api/WorkSchedule/bulk', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
 
-            if (res.ok) {
-                location.reload();
-            } else {
-                const errorText = await res.text();
-                alert('Error creating schedule: ' + errorText);
+                if (res.ok) {
+                    const result = await res.json();
+                    let message = `Created ${result.created.length} schedules.`;
+                    
+                    if (result.skipped.length > 0) {
+                        message += `\nSkipped: ${result.skipped.length} (already exist)`;
+                    }
+                    
+                    if (result.errors && result.errors.length > 0) {
+                        message += `\nErrors: ${result.errors.length}`;
+                        console.error('Bulk create errors:', result.errors);
+                    }
+                    
+                    alert(message);
+                    location.reload();
+                } else {
+                    const errorText = await res.text();
+                    console.error('Error response:', errorText);
+                    alert('Error creating schedule: ' + errorText);
+                }
+            } catch (error) {
+                console.error('Error creating schedule:', error);
+                alert('Error creating schedule: ' + error.message);
             }
         }
 
@@ -276,39 +363,37 @@
 
             console.log("Filtered:", selected);
 
-            const today = new Date().toISOString().split('T')[0];
             const tbody = document.getElementById('scheduleDetailTable');
             tbody.innerHTML = '';
-            selected.forEach(sch => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${sch.userFullName}</td>
-                    <td>${sch.status}</td>
+
+            selected.forEach(s => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${s.userFullName}</td>
+                    <td><span class="badge badge-${s.status.toLowerCase()}">${s.status}</span></td>
                     <td>
-                        ${date >= today ? `<button class="btn btn-danger btn-sm" onclick="deleteSchedule(${sch.id})">Delete</button>` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="deleteSchedule(${s.id})">Delete</button>
                     </td>
                 `;
-                tbody.appendChild(tr);
             });
 
             new bootstrap.Modal(document.getElementById('scheduleDetailModal')).show();
         }
 
         async function deleteSchedule(id) {
-            if (!confirm("Are you sure you want to delete this schedule?")) return;
+            if (!confirm('Are you sure you want to delete this schedule?')) return;
+
             const token = localStorage.getItem("accessToken");
             const res = await fetch(`https://localhost:7117/api/WorkSchedule/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+
             if (res.ok) {
-                alert("Deleted successfully");
                 location.reload();
             } else {
-                alert("Failed to delete schedule");
+                alert('Failed to delete schedule');
             }
         }
-
-        document.addEventListener('DOMContentLoaded', loadEmployees);
     </script>
 }
