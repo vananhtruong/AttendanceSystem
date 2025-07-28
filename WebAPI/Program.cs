@@ -113,10 +113,17 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowRazor",
         policy =>
         {
-            policy.WithOrigins("https://localhost:7192", "http://localhost:7192", "https://localhost:7118", "http://localhost:7118")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
+            policy.WithOrigins(
+                "http://attendance-system-web.runasp.net",
+                "https://attendance-system-web.runasp.net",
+                "http://localhost:5135",
+                "https://localhost:7192",
+                "http://localhost:5000",
+                "https://localhost:5001"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
         });
 });
 

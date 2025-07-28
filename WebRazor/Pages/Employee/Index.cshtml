@@ -48,28 +48,30 @@ let searchTimeout = null;
 let currentPage = 1;
 const pageSize = 10;
 
-function fetchEmployees(keyword, page) {
-    const apiBaseUrl = "https://localhost:7118";
-    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken') || getCookie('AccessToken');
-    console.log('Token used for OData:', token);
-    if (!token) {
+async function fetchEmployees(keyword, page) {
+    if (!window.apiHelper || !window.apiHelper.token) {
         document.getElementById('employeeTableContainer').innerHTML = '<div class="alert alert-danger">You are not logged in. Please login as Admin.</div>';
         return;
     }
-            fetch(`${apiBaseUrl}/api/Employee?$filter=contains(tolower(FullName),'${keyword.toLowerCase()}') or contains(tolower(Email),'${keyword.toLowerCase()}')&$top=${pageSize}&$skip=${(page - 1) * pageSize}&$count=true`, {
-        headers: { 'Authorization': 'Bearer ' + token }
-    })
-    .then(res => {
-        if (res.status === 401) {
-            document.getElementById('employeeTableContainer').innerHTML = '<div class="alert alert-danger">You are not authorized. Please login as Admin.</div>';
-            return { value: [], '@@odata.count': 0 };
+    
+    try {
+        const params = {
+            '$filter': `contains(tolower(FullName),'${keyword.toLowerCase()}') or contains(tolower(Email),'${keyword.toLowerCase()}')`,
+            '$top': pageSize,
+            '$skip': (page - 1) * pageSize,
+            '$count': 'true'
+        };
+        
+        const data = await window.apiHelper.getOData('/odata/Users', params);
+        if (data) {
+            renderEmployeeTable(data.value, data['@@odata.count'] || data.value.length, page, pageSize, keyword);
+        } else {
+            document.getElementById('employeeTableContainer').innerHTML = '<div class="alert alert-danger">Failed to load employees. Please try again.</div>';
         }
-        return res.json();
-    })
-        .then(data => {
-            const employees = Array.isArray(data) ? data : []; // Đảm bảo luôn là mảng
-            renderEmployeeTable(employees, employees.length, page, pageSize, keyword);
-        });
+    } catch (error) {
+        console.error('Error fetching employees:', error);
+        document.getElementById('employeeTableContainer').innerHTML = '<div class="alert alert-danger">Error loading employees. Please try again.</div>';
+    }
 }
 
 document.getElementById('searchBox').addEventListener('input', function() {
@@ -111,38 +113,39 @@ function renderEmployeeTable(employees, total, page, pageSize, keyword) {
     document.getElementById('employeeTableContainer').innerHTML = html;
 }
 
-
 function gotoPage(page, keyword) {
     currentPage = page;
     fetchEmployees(keyword, page);
 }
 
-function banEmployee(id, keyword, page) {
-    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken') || getCookie('AccessToken');
-    fetch(`https://localhost:7117/api/Employee/ban/${id}`, {
-        method: 'PUT',
-        headers: {
-            'Authorization': 'Bearer ' + token
+async function banEmployee(id, keyword, page) {
+    try {
+        const success = await window.apiHelper.put(`/api/Employee/ban/${id}`, {});
+        if (success) {
+            showToast('Ban successful!');
+            fetchEmployees(keyword, page);
+        } else {
+            showToast('Ban failed!');
         }
-    })
-    .then(res => {
-        if (res.ok) showToast('Ban successful!');
-        fetchEmployees(keyword, page);
-    });
+    } catch (error) {
+        console.error('Error banning employee:', error);
+        showToast('Ban failed!');
+    }
 }
 
-function unbanEmployee(id, keyword, page) {
-    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken') || getCookie('AccessToken');
-    fetch(`https://localhost:7117/api/Employee/unban/${id}`, {
-        method: 'PUT',
-        headers: {
-            'Authorization': 'Bearer ' + token
+async function unbanEmployee(id, keyword, page) {
+    try {
+        const success = await window.apiHelper.put(`/api/Employee/unban/${id}`, {});
+        if (success) {
+            showToast('Unban successful!');
+            fetchEmployees(keyword, page);
+        } else {
+            showToast('Unban failed!');
         }
-    })
-    .then(res => {
-        if (res.ok) showToast('Unban successful!');
-        fetchEmployees(keyword, page);
-    });
+    } catch (error) {
+        console.error('Error unbanning employee:', error);
+        showToast('Unban failed!');
+    }
 }
 
 function showToast(msg) {
@@ -151,9 +154,11 @@ function showToast(msg) {
     toast.style.display = 'block';
     setTimeout(() => { toast.style.display = 'none'; }, 2500);
 }
+
 function hideToast() {
     document.getElementById('toastSuccess').style.display = 'none';
 }
+
 function showDetail(id, name, email, status) {
     let html = `
         <div><b>ID:</b> ${id}</div>
@@ -165,12 +170,9 @@ function showDetail(id, name, email, status) {
     modal.show();
 }
 
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-}
 // Initial load
-fetchEmployees('', 1);
+document.addEventListener('DOMContentLoaded', function() {
+    fetchEmployees('', 1);
+});
 </script>
-} 
+}

@@ -51,4 +51,26 @@
     <div class="text-center mt-3">
         <a href="/Account/Register" class="text-decoration-none text-secondary">Don't have an account? Register</a>
     </div>
-</div> 
+</div>
+
+@section Scripts {
+<script>
+// Script để lưu token vào localStorage khi đăng nhập thành công
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    if (token) {
+        // Lưu token vào localStorage
+        localStorage.setItem('accessToken', token);
+        sessionStorage.setItem('accessToken', token);
+        
+        // Xóa token khỏi URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        
+        console.log('Token saved successfully:', token);
+    }
+});
+</script>
+} 
