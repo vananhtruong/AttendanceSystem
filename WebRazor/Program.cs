@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using BusinessObject;
+using Microsoft.EntityFrameworkCore;
+using WebRazor.Services;
+using WebRazor.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,9 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddHttpClient("api", client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7117/"); // Địa chỉ WebAPI của bạn
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7117/");
 });
 builder.Services.AddSession();
+
+// Register API Service
+builder.Services.AddScoped<IApiService, ApiService>();
 
 // Thêm cấu hình xác thực JWT cho Razor Pages
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -22,9 +29,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = "AttendanceAPI", // giống WebAPI
-            ValidAudience = "AttendanceClient", // giống WebAPI
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("AttendanceSystemSuperSecretKey123!")), // giống WebAPI
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "AttendanceAPI",
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "AttendanceClient",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "AttendanceSystemSuperSecretKey123!")),
             RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
         };
         // Lấy token từ Session
@@ -56,6 +63,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseSession();
+app.UseMiddleware<TokenMiddleware>();
 app.UseRouting();
 
 // Thêm authentication và authorization vào pipeline
