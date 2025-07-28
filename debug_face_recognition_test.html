@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Debug Face Recognition</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      .section h3 {
+        margin-top: 0;
+        color: #333;
+      }
+      input,
+      button {
+        padding: 10px;
+        margin: 5px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        cursor: pointer;
+        border: none;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .btn-danger {
+        background: #dc3545;
+      }
+      .btn-danger:hover {
+        background: #c82333;
+      }
+      .btn-success {
+        background: #28a745;
+      }
+      .btn-success:hover {
+        background: #218838;
+      }
+      .btn-warning {
+        background: #ffc107;
+        color: #212529;
+      }
+      .btn-warning:hover {
+        background: #e0a800;
+      }
+      .log {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+      }
+      .error {
+        color: #dc3545;
+      }
+      .success {
+        color: #28a745;
+      }
+      .warning {
+        color: #ffc107;
+      }
+      .info {
+        color: #17a2b8;
+      }
+      .user-list {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .user-item {
+        padding: 8px;
+        margin: 5px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: #f8f9fa;
+      }
+      .user-item.has-face {
+        background: #d4edda;
+        border-color: #c3e6cb;
+      }
+      .user-item.no-face {
+        background: #f8d7da;
+        border-color: #f5c6cb;
+      }
+      .face-data {
+        font-size: 10px;
+        color: #666;
+        word-break: break-all;
+      }
+      .camera-container {
+        text-align: center;
+        margin: 20px 0;
+      }
+      #video {
+        width: 100%;
+        max-width: 640px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+      }
+      #canvas {
+        display: none;
+      }
+      .controls {
+        margin: 10px 0;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .status.info {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+      .status.warning {
+        background: #fff3cd;
+        color: #856404;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔍 Debug Face Recognition System</h1>
+
+      <!-- Configuration Section -->
+      <div class="section">
+        <h3>⚙️ Configuration</h3>
+        <div>
+          <label>API Base URL:</label>
+          <input
+            type="text"
+            id="apiBaseUrl"
+            value="https://localhost:7117/"
+            style="width: 300px"
+          />
+          <button onclick="testConnection()">Test Connection</button>
+        </div>
+        <div style="margin-top: 10px">
+          <label>Access Token:</label>
+          <input
+            type="text"
+            id="accessToken"
+            placeholder="Enter your JWT token"
+            style="width: 400px"
+          />
+          <button onclick="validateToken()">Validate Token</button>
+        </div>
+      </div>
+
+      <!-- Database Users Section -->
+      <div class="section">
+        <h3>👥 Database Users</h3>
+        <button onclick="loadUsers()">Load All Users</button>
+        <button onclick="loadUsersWithFaceData()">
+          Load Users with Face Data
+        </button>
+        <button onclick="clearUserList()">Clear List</button>
+        <div id="userList" class="user-list"></div>
+      </div>
+
+      <!-- Face Recognition Test Section -->
+      <div class="section">
+        <h3>📷 Face Recognition Test</h3>
+        <div class="camera-container">
+          <video id="video" autoplay></video>
+          <canvas id="canvas"></canvas>
+          <div class="controls">
+            <button onclick="startCamera()">Start Camera</button>
+            <button onclick="stopCamera()">Stop Camera</button>
+            <button onclick="capturePhoto()">Capture Photo</button>
+            <button onclick="testFaceRecognition()" class="btn-success">
+              Test Recognition
+            </button>
+          </div>
+        </div>
+        <div id="recognitionResult" class="status" style="display: none"></div>
+      </div>
+
+      <!-- Face Registration Test Section -->
+      <div class="section">
+        <h3>📝 Face Registration Test</h3>
+        <div>
+          <label>User ID:</label>
+          <input
+            type="number"
+            id="registerUserId"
+            placeholder="Enter user ID"
+          />
+          <button onclick="registerFace()" class="btn-success">
+            Register Face
+          </button>
+          <button onclick="checkFaceStatus()" class="btn-warning">
+            Check Face Status
+          </button>
+          <button onclick="removeFace()" class="btn-danger">Remove Face</button>
+        </div>
+        <div id="registrationResult" class="status" style="display: none"></div>
+      </div>
+
+      <!-- Log Section -->
+      <div class="section">
+        <h3>📋 Debug Log</h3>
+        <button onclick="clearLog()">Clear Log</button>
+        <button onclick="exportLog()">Export Log</button>
+        <div id="log" class="log"></div>
+      </div>
+    </div>
+
+    <script>
+      let stream = null;
+      let capturedImage = null;
+      let logEntries = [];
+
+      // Logging function
+      function log(message, type = "info") {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = `[${timestamp}] ${message}`;
+        logEntries.push({ timestamp, message, type });
+
+        const logDiv = document.getElementById("log");
+        const logLine = document.createElement("div");
+        logLine.className = type;
+        logLine.textContent = logEntry;
+        logDiv.appendChild(logLine);
+        logDiv.scrollTop = logDiv.scrollHeight;
+
+        console.log(logEntry);
+      }
+
+      // Configuration
+      function testConnection() {
+        const apiUrl = document.getElementById("apiBaseUrl").value;
+        log(`Testing connection to: ${apiUrl}`, "info");
+
+        fetch(`${apiUrl}api/Users`)
+          .then((response) => {
+            if (response.ok) {
+              log("✅ Connection successful", "success");
+            } else {
+              log(`❌ Connection failed: ${response.status}`, "error");
+            }
+          })
+          .catch((error) => {
+            log(`❌ Connection error: ${error.message}`, "error");
+          });
+      }
+
+      function validateToken() {
+        const token = document.getElementById("accessToken").value;
+        if (!token) {
+          log("❌ No token provided", "error");
+          return;
+        }
+
+        const apiUrl = document.getElementById("apiBaseUrl").value;
+        log(`Validating token: ${token.substring(0, 20)}...`, "info");
+
+        fetch(`${apiUrl}api/Users`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then((response) => {
+            if (response.ok) {
+              log("✅ Token is valid", "success");
+            } else {
+              log(`❌ Token validation failed: ${response.status}`, "error");
+            }
+          })
+          .catch((error) => {
+            log(`❌ Token validation error: ${error.message}`, "error");
+          });
+      }
+
+      // User management
+      async function loadUsers() {
+        const apiUrl = document.getElementById("apiBaseUrl").value;
+        const token = document.getElementById("accessToken").value;
+
+        log("Loading all users...", "info");
+
+        try {
+          const response = await fetch(`${apiUrl}api/Users`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const users = await response.json();
+          log(`Loaded ${users.length} users`, "success");
+          displayUsers(users);
+        } catch (error) {
+          log(`❌ Error loading users: ${error.message}`, "error");
+        }
+      }
+
+      async function loadUsersWithFaceData() {
+        const apiUrl = document.getElementById("apiBaseUrl").value;
+        const token = document.getElementById("accessToken").value;
+
+        log("Loading users with face data...", "info");
+
+        try {
+          const response = await fetch(`${apiUrl}api/Users`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const users = await response.json();
+          const usersWithFace = users.filter((user) => user.faceDescriptorJson);
+          log(
+            `Found ${usersWithFace.length} users with face data out of ${users.length} total`,
+            "success"
+          );
+          displayUsers(usersWithFace);
+        } catch (error) {
+          log(`❌ Error loading users: ${error.message}`, "error");
+        }
+      }
+
+      function displayUsers(users) {
+        const userList = document.getElementById("userList");
+        userList.innerHTML = "";
+
+        users.forEach((user) => {
+          const userDiv = document.createElement("div");
+          userDiv.className = `user-item ${
+            user.faceDescriptorJson ? "has-face" : "no-face"
+          }`;
+
+          const hasFace = user.faceDescriptorJson ? "✅" : "❌";
+          const faceDataPreview = user.faceDescriptorJson
+            ? user.faceDescriptorJson.substring(0, 100) + "..."
+            : "No face data";
+
+          userDiv.innerHTML = `
+                    <strong>${hasFace} User ${user.id}: ${user.fullName}</strong><br>
+                    <small>Email: ${user.email}</small><br>
+                    <div class="face-data">Face Data: ${faceDataPreview}</div>
+                `;
+
+          userList.appendChild(userDiv);
+        });
+      }
+
+      function clearUserList() {
+        document.getElementById("userList").innerHTML = "";
+        log("User list cleared", "info");
+      }
+
+      // Camera functions
+      async function startCamera() {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const video = document.getElementById("video");
+          video.srcObject = stream;
+          log("✅ Camera started", "success");
+        } catch (error) {
+          log(`❌ Camera error: ${error.message}`, "error");
+        }
+      }
+
+      function stopCamera() {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+          stream = null;
+          const video = document.getElementById("video");
+          video.srcObject = null;
+          log("Camera stopped", "info");
+        }
+      }
+
+      function capturePhoto() {
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const context = canvas.getContext("2d");
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+
+        capturedImage = canvas.toDataURL("image/jpeg", 0.8);
+        log("✅ Photo captured", "success");
+      }
+
+      // Face recognition test
+      async function testFaceRecognition() {
+        if (!capturedImage) {
+          log("❌ No photo captured. Please capture a photo first.", "error");
+          return;
+        }
+
+        const apiUrl = document.getElementById("apiBaseUrl").value;
+        const token = document.getElementById("accessToken").value;
+
+        if (!token) {
+          log("❌ No access token provided", "error");
+          return;
+        }
+
+        log("Testing face recognition...", "info");
+
+        try {
+          // Convert base64 to blob
+          const response = await fetch(capturedImage);
+          const blob = await response.blob();
+
+          // Create form data
+          const formData = new FormData();
+          formData.append("FaceImage", blob, "face.jpg");
+
+          const apiResponse = await fetch(
+            `${apiUrl}api/FaceAttendance/checkin`,
+            {
+              method: "POST",
+              body: formData,
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const result = await apiResponse.json();
+          log(`API Response Status: ${apiResponse.status}`, "info");
+          log(`API Response: ${JSON.stringify(result, null, 2)}`, "info");
+
+          const resultDiv = document.getElementById("recognitionResult");
+          resultDiv.style.display = "block";
+
+          if (result.success && result.data) {
+            resultDiv.className = "status success";
+            resultDiv.innerHTML = `
+                        <h4>✅ Recognition Successful</h4>
+                        <p><strong>User:</strong> ${result.data.user.fullName} (ID: ${result.data.user.id})</p>
+                        <p><strong>Schedule:</strong> ${result.data.schedule.shiftName}</p>
+                        <p><strong>Status:</strong> ${result.data.schedule.attendanceStatus}</p>
+                        <p><strong>Can Check In:</strong> ${result.data.schedule.canCheckIn}</p>
+                        <p><strong>Can Check Out:</strong> ${result.data.schedule.canCheckOut}</p>
+                    `;
+            log("✅ Face recognition successful", "success");
+          } else {
+            resultDiv.className = "status error";
+            resultDiv.innerHTML = `
+                        <h4>❌ Recognition Failed</h4>
+                        <p><strong>Error:</strong> ${
+                          result.message || "Unknown error"
+                        }</p>
+                    `;
+            log(`❌ Face recognition failed: ${result.message}`, "error");
+          }
+        } catch (error) {
+          log(`❌ Face recognition error: ${error.message}`, "error");
+          const resultDiv = document.getElementById("recognitionResult");
+          resultDiv.style.display = "block";
+          resultDiv.className = "status error";
+          resultDiv.innerHTML = `
+                    <h4>❌ Recognition Error</h4>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+        }
+      }
+
+      // Face registration test
+      async function registerFace() {
+        if (!capturedImage) {
+          log("❌ No photo captured. Please capture a photo first.", "error");
+          return;
+        }
+
+        const userId = document.getElementById("registerUserId").value;
+        if (!userId) {
+          log("❌ No user ID provided", "error");
+          return;
+        }
+
+        const apiUrl = document.getElementById("apiBaseUrl").value;
+        const token = document.getElementById("accessToken").value;
+
+        if (!token) {
+          log("❌ No access token provided", "error");
+          return;
+        }
+
+        log(`Registering face for user ${userId}...`, "info");
+
+        try {
+          const response = await fetch(capturedImage);
+          const blob = await response.blob();
+
+          const formData = new FormData();
+          formData.append("FaceImage", blob, "face.jpg");
+
+          const apiResponse = await fetch(
+            `${apiUrl}api/FaceAttendance/register-face`,
+            {
+              method: "POST",
+              body: formData,
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const result = await apiResponse.json();
+          log(
+            `Registration Response: ${JSON.stringify(result, null, 2)}`,
+            "info"
+          );
+
+          const resultDiv = document.getElementById("registrationResult");
+          resultDiv.style.display = "block";
+
+          if (result.success) {
+            resultDiv.className = "status success";
+            resultDiv.innerHTML = `<h4>✅ Face Registration Successful</h4><p>${result.message}</p>`;
+            log("✅ Face registration successful", "success");
+          } else {
+            resultDiv.className = "status error";
+            resultDiv.innerHTML = `<h4>❌ Face Registration Failed</h4><p>${result.message}</p>`;
+            log(`❌ Face registration failed: ${result.message}`, "error");
+          }
+        } catch (error) {
+          log(`❌ Face registration error: ${error.message}`, "error");
+        }
+      }
+
+      async function checkFaceStatus() {
+        const userId = document.getElementById("registerUserId").value;
+        if (!userId) {
+          log("❌ No user ID provided", "error");
+          return;
+        }
+
+        const apiUrl = document.getElementById("apiBaseUrl").value;
+        const token = document.getElementById("accessToken").value;
+
+        if (!token) {
+          log("❌ No access token provided", "error");
+          return;
+        }
+
+        log(`Checking face status for user ${userId}...`, "info");
+
+        try {
+          const response = await fetch(
+            `${apiUrl}api/FaceAttendance/face-status`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const result = await response.json();
+          log(
+            `Face Status Response: ${JSON.stringify(result, null, 2)}`,
+            "info"
+          );
+
+          const resultDiv = document.getElementById("registrationResult");
+          resultDiv.style.display = "block";
+
+          if (result.success) {
+            resultDiv.className = "status success";
+            resultDiv.innerHTML = `<h4>✅ Face Status Check</h4><p>${result.message}</p>`;
+          } else {
+            resultDiv.className = "status warning";
+            resultDiv.innerHTML = `<h4>⚠️ Face Status Check</h4><p>${result.message}</p>`;
+          }
+        } catch (error) {
+          log(`❌ Face status check error: ${error.message}`, "error");
+        }
+      }
+
+      async function removeFace() {
+        const userId = document.getElementById("registerUserId").value;
+        if (!userId) {
+          log("❌ No user ID provided", "error");
+          return;
+        }
+
+        const apiUrl = document.getElementById("apiBaseUrl").value;
+        const token = document.getElementById("accessToken").value;
+
+        if (!token) {
+          log("❌ No access token provided", "error");
+          return;
+        }
+
+        if (
+          !confirm(
+            `Are you sure you want to remove face data for user ${userId}?`
+          )
+        ) {
+          return;
+        }
+
+        log(`Removing face data for user ${userId}...`, "info");
+
+        try {
+          const response = await fetch(
+            `${apiUrl}api/FaceAttendance/remove-face/${userId}`,
+            {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const result = await response.json();
+          log(
+            `Remove Face Response: ${JSON.stringify(result, null, 2)}`,
+            "info"
+          );
+
+          const resultDiv = document.getElementById("registrationResult");
+          resultDiv.style.display = "block";
+
+          if (result.success) {
+            resultDiv.className = "status success";
+            resultDiv.innerHTML = `<h4>✅ Face Data Removed</h4><p>${result.message}</p>`;
+            log("✅ Face data removed successfully", "success");
+          } else {
+            resultDiv.className = "status error";
+            resultDiv.innerHTML = `<h4>❌ Face Removal Failed</h4><p>${result.message}</p>`;
+            log(`❌ Face removal failed: ${result.message}`, "error");
+          }
+        } catch (error) {
+          log(`❌ Face removal error: ${error.message}`, "error");
+        }
+      }
+
+      // Log management
+      function clearLog() {
+        document.getElementById("log").innerHTML = "";
+        logEntries = [];
+        log("Log cleared", "info");
+      }
+
+      function exportLog() {
+        const logText = logEntries
+          .map((entry) => `[${entry.timestamp}] ${entry.message}`)
+          .join("\n");
+        const blob = new Blob([logText], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `face-recognition-debug-${new Date()
+          .toISOString()
+          .slice(0, 19)
+          .replace(/:/g, "-")}.log`;
+        a.click();
+        URL.revokeObjectURL(url);
+        log("Log exported", "info");
+      }
+
+      // Initialize
+      window.addEventListener("load", function () {
+        log("Debug tool initialized", "info");
+        log(
+          "Please configure API URL and access token, then start testing",
+          "info"
+        );
+      });
+
+      // Cleanup on page unload
+      window.addEventListener("beforeunload", function () {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -123,7 +123,8 @@ builder.Services.AddCors(options =>
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowCredentials()
+            .SetIsOriginAllowed(origin => true); // Allow all origins for development
         });
 });
 
@@ -165,6 +166,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles(); // Enable static files serving
 app.UseCors("AllowRazor");
 app.UseAuthentication();
 app.UseAuthorization();

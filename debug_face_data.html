@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Debug Face Data</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .debug-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .result {
+        background: #f8f9fa;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        white-space: pre-wrap;
+        font-family: monospace;
+        font-size: 12px;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+      input {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .user-card {
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .face-data {
+        background: #f8f9fa;
+        padding: 8px;
+        margin: 5px 0;
+        border-radius: 4px;
+        font-size: 11px;
+      }
+      .no-face {
+        color: #dc3545;
+        font-weight: bold;
+      }
+      .has-face {
+        color: #28a745;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔍 Debug Face Data</h1>
+
+    <div class="debug-section">
+      <h3>🔑 Authentication</h3>
+      <input
+        type="text"
+        id="tokenInput"
+        placeholder="Paste your JWT token here"
+      />
+      <button onclick="checkToken()">Check Token</button>
+      <div id="tokenResult" class="result"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>👥 All Users with Face Data</h3>
+      <button onclick="getAllUsers()">Get All Users</button>
+      <button onclick="getUsersWithFaceData()">Get Users with Face Data</button>
+      <div id="usersResult" class="result"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>📷 Test Face Recognition</h3>
+      <input type="file" id="testImage" accept="image/*" />
+      <button onclick="testFaceRecognition()">Test Recognition</button>
+      <div id="recognitionResult" class="result"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>🔧 Face Registration Test</h3>
+      <input type="file" id="registerImage" accept="image/*" />
+      <button onclick="testFaceRegistration()">Test Registration</button>
+      <div id="registrationResult" class="result"></div>
+    </div>
+
+    <script>
+      const API_BASE = "https://localhost:7117";
+
+      function showResult(elementId, data, isError = false) {
+        const element = document.getElementById(elementId);
+        element.textContent = JSON.stringify(data, null, 2);
+        element.className = `result ${isError ? "error" : "success"}`;
+      }
+
+      function getToken() {
+        return document.getElementById("tokenInput").value;
+      }
+
+      function checkToken() {
+        const token = getToken();
+        if (!token) {
+          showResult("tokenResult", { error: "Please enter a token" }, true);
+          return;
+        }
+
+        try {
+          const parts = token.split(".");
+          if (parts.length !== 3) {
+            showResult(
+              "tokenResult",
+              { error: "Invalid JWT token format" },
+              true
+            );
+            return;
+          }
+
+          const payload = JSON.parse(atob(parts[1]));
+          const now = Math.floor(Date.now() / 1000);
+
+          const tokenInfo = {
+            header: JSON.parse(atob(parts[0])),
+            payload: payload,
+            isExpired: payload.exp < now,
+            expiresIn: payload.exp - now,
+            claims: {
+              name: payload.name,
+              email: payload.email,
+              role: payload.role,
+              nameid: payload.nameid,
+            },
+          };
+
+          showResult("tokenResult", tokenInfo);
+        } catch (error) {
+          showResult(
+            "tokenResult",
+            { error: `Token decode error: ${error.message}` },
+            true
+          );
+        }
+      }
+
+      async function getAllUsers() {
+        const token = getToken();
+        if (!token) {
+          showResult(
+            "usersResult",
+            { error: "Please enter a token first" },
+            true
+          );
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/api/Users`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (response.ok) {
+            const users = await response.json();
+            const usersWithFaceInfo = users.map((user) => ({
+              id: user.id,
+              fullName: user.fullName,
+              email: user.email,
+              hasFaceData: !!user.faceDescriptorJson,
+              faceDataLength: user.faceDescriptorJson
+                ? user.faceDescriptorJson.length
+                : 0,
+              faceDataPreview: user.faceDescriptorJson
+                ? user.faceDescriptorJson.substring(0, 100) + "..."
+                : null,
+            }));
+
+            showResult("usersResult", {
+              totalUsers: users.length,
+              usersWithFaceData: users.filter((u) => u.faceDescriptorJson)
+                .length,
+              users: usersWithFaceInfo,
+            });
+          } else {
+            const errorText = await response.text();
+            showResult(
+              "usersResult",
+              { error: `API Error: ${response.status} - ${errorText}` },
+              true
+            );
+          }
+        } catch (error) {
+          showResult("usersResult", { error: error.message }, true);
+        }
+      }
+
+      async function getUsersWithFaceData() {
+        const token = getToken();
+        if (!token) {
+          showResult(
+            "usersResult",
+            { error: "Please enter a token first" },
+            true
+          );
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/api/Users`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (response.ok) {
+            const users = await response.json();
+            const usersWithFace = users.filter(
+              (user) => user.faceDescriptorJson
+            );
+
+            const detailedUsers = usersWithFace.map((user) => {
+              let faceData = null;
+              try {
+                faceData = JSON.parse(user.faceDescriptorJson);
+              } catch (e) {
+                faceData = { error: "Invalid JSON" };
+              }
+
+              return {
+                id: user.id,
+                fullName: user.fullName,
+                email: user.email,
+                faceData: faceData,
+                descriptorLength: faceData.descriptor
+                  ? faceData.descriptor.length
+                  : 0,
+              };
+            });
+
+            showResult("usersResult", {
+              usersWithFaceData: detailedUsers.length,
+              users: detailedUsers,
+            });
+          } else {
+            const errorText = await response.text();
+            showResult(
+              "usersResult",
+              { error: `API Error: ${response.status} - ${errorText}` },
+              true
+            );
+          }
+        } catch (error) {
+          showResult("usersResult", { error: error.message }, true);
+        }
+      }
+
+      async function testFaceRecognition() {
+        const token = getToken();
+        const fileInput = document.getElementById("testImage");
+        const file = fileInput.files[0];
+
+        if (!token) {
+          showResult(
+            "recognitionResult",
+            { error: "Please enter a token first" },
+            true
+          );
+          return;
+        }
+
+        if (!file) {
+          showResult(
+            "recognitionResult",
+            { error: "Please select an image file" },
+            true
+          );
+          return;
+        }
+
+        try {
+          const formData = new FormData();
+          formData.append("FaceImage", file);
+
+          const response = await fetch(
+            `${API_BASE}/api/FaceAttendance/checkin`,
+            {
+              method: "POST",
+              body: formData,
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const result = await response.json();
+          showResult(
+            "recognitionResult",
+            {
+              status: response.status,
+              success: response.ok,
+              result: result,
+            },
+            !response.ok
+          );
+        } catch (error) {
+          showResult("recognitionResult", { error: error.message }, true);
+        }
+      }
+
+      async function testFaceRegistration() {
+        const token = getToken();
+        const fileInput = document.getElementById("registerImage");
+        const file = fileInput.files[0];
+
+        if (!token) {
+          showResult(
+            "registrationResult",
+            { error: "Please enter a token first" },
+            true
+          );
+          return;
+        }
+
+        if (!file) {
+          showResult(
+            "registrationResult",
+            { error: "Please select an image file" },
+            true
+          );
+          return;
+        }
+
+        try {
+          const formData = new FormData();
+          formData.append("FaceImage", file);
+
+          const response = await fetch(
+            `${API_BASE}/api/FaceAttendance/register-my-face`,
+            {
+              method: "POST",
+              body: formData,
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const result = await response.json();
+          showResult(
+            "registrationResult",
+            {
+              status: response.status,
+              success: response.ok,
+              result: result,
+            },
+            !response.ok
+          );
+        } catch (error) {
+          showResult("registrationResult", { error: error.message }, true);
+        }
+      }
+
+      // Auto-fill token from localStorage/sessionStorage if available
+      window.addEventListener("load", function () {
+        const token =
+          localStorage.getItem("AccessToken") ||
+          sessionStorage.getItem("AccessToken");
+        if (token) {
+          document.getElementById("tokenInput").value = token;
+        }
+      });
+    </script>
+  </body>
+</html>

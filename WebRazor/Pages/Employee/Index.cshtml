@@ -55,18 +55,30 @@ async function fetchEmployees(keyword, page) {
     }
     
     try {
-        const params = {
-            '$filter': `contains(tolower(FullName),'${keyword.toLowerCase()}') or contains(tolower(Email),'${keyword.toLowerCase()}')`,
-            '$top': pageSize,
-            '$skip': (page - 1) * pageSize,
-            '$count': 'true'
-        };
+        console.log('Fetching employees with keyword:', keyword, 'page:', page);
         
-        const data = await window.apiHelper.getOData('/odata/Users', params);
-        if (data) {
-            renderEmployeeTable(data.value, data['@@odata.count'] || data.value.length, page, pageSize, keyword);
+        // Sử dụng API endpoint đúng thay vì OData
+        let endpoint = 'api/Employee';
+        if (keyword && keyword.trim()) {
+            endpoint += `?keyword=${encodeURIComponent(keyword.trim())}`;
+        }
+        
+        console.log('API endpoint:', endpoint);
+        const data = await window.apiHelper.get(endpoint);
+        
+        console.log('API response:', data);
+        
+        if (data && Array.isArray(data)) {
+            // Tính toán pagination
+            const total = data.length;
+            const startIndex = (page - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            const pagedData = data.slice(startIndex, endIndex);
+            
+            renderEmployeeTable(pagedData, total, page, pageSize, keyword);
         } else {
-            document.getElementById('employeeTableContainer').innerHTML = '<div class="alert alert-danger">Failed to load employees. Please try again.</div>';
+            console.error('Invalid API response format:', data);
+            document.getElementById('employeeTableContainer').innerHTML = '<div class="alert alert-danger">Invalid response format from server.</div>';
         }
     } catch (error) {
         console.error('Error fetching employees:', error);
@@ -91,25 +103,30 @@ function renderEmployeeTable(employees, total, page, pageSize, keyword) {
         for (const emp of employees) {
             html += `<tr>
                 <td>${++index}</td>
-                <td>${emp.fullName}</td>
-                <td>${emp.email}</td>
-                <td>${emp.isBanned ? '<span class="badge badge-banned">Banned</span>' : '<span class="badge badge-active">Active</span>'}</td>
+                <td>${emp.fullName || emp.FullName || 'N/A'}</td>
+                <td>${emp.email || emp.Email || 'N/A'}</td>
+                <td>${emp.isBanned || emp.IsBanned ? '<span class="badge badge-banned">Banned</span>' : '<span class="badge badge-active">Active</span>'}</td>
                 <td>`;
-            if (!emp.isBanned) {
-                html += `<button class="btn btn-outline-danger btn-sm" onclick="banEmployee(${emp.id}, '${keyword}', ${page})"><i class="bi bi-person-x"></i> Ban</button>`;
+            if (!(emp.isBanned || emp.IsBanned)) {
+                html += `<button class="btn btn-outline-danger btn-sm" onclick="banEmployee(${emp.id || emp.Id}, '${keyword}', ${page})"><i class="bi bi-person-x"></i> Ban</button>`;
             } else {
-                html += `<button class="btn btn-outline-success btn-sm" onclick="unbanEmployee(${emp.id}, '${keyword}', ${page})"><i class="bi bi-person-check"></i> Unban</button>`;
+                html += `<button class="btn btn-outline-success btn-sm" onclick="unbanEmployee(${emp.id || emp.Id}, '${keyword}', ${page})"><i class="bi bi-person-check"></i> Unban</button>`;
             }
-            html += `<a href="#" class="btn btn-outline-info btn-sm ms-1" onclick="showDetail(${emp.id}, '${emp.fullName}', '${emp.email}', '${emp.isBanned ? 'Banned' : 'Active'}')"><i class="bi bi-info-circle"></i> Detail</a></td></tr>`;
+            html += `<a href="#" class="btn btn-outline-info btn-sm ms-1" onclick="showDetail(${emp.id || emp.Id}, '${emp.fullName || emp.FullName || 'N/A'}', '${emp.email || emp.Email || 'N/A'}', '${emp.isBanned || emp.IsBanned ? 'Banned' : 'Active'}')"><i class="bi bi-info-circle"></i> Detail</a></td></tr>`;
         }
     }
     html += `</tbody></table>`;
+    
+    // Pagination
     const totalPages = Math.ceil(total / pageSize);
-    html += `<nav aria-label="Employee pagination"><ul class="pagination">`;
-    for (let i = 1; i <= totalPages; i++) {
-        html += `<li class="page-item${i === page ? ' active' : ''}"><a class="page-link" href="#" onclick="gotoPage(${i}, '${keyword}');return false;">${i}</a></li>`;
+    if (totalPages > 1) {
+        html += `<nav aria-label="Employee pagination"><ul class="pagination">`;
+        for (let i = 1; i <= totalPages; i++) {
+            html += `<li class="page-item${i === page ? ' active' : ''}"><a class="page-link" href="#" onclick="gotoPage(${i}, '${keyword}');return false;">${i}</a></li>`;
+        }
+        html += `</ul></nav>`;
     }
-    html += `</ul></nav>`;
+    
     document.getElementById('employeeTableContainer').innerHTML = html;
 }
 
@@ -120,7 +137,8 @@ function gotoPage(page, keyword) {
 
 async function banEmployee(id, keyword, page) {
     try {
-        const success = await window.apiHelper.put(`/api/Employee/ban/${id}`, {});
+        console.log('Banning employee:', id);
+        const success = await window.apiHelper.put(`api/Employee/ban/${id}`, {});
         if (success) {
             showToast('Ban successful!');
             fetchEmployees(keyword, page);
@@ -135,7 +153,8 @@ async function banEmployee(id, keyword, page) {
 
 async function unbanEmployee(id, keyword, page) {
     try {
-        const success = await window.apiHelper.put(`/api/Employee/unban/${id}`, {});
+        console.log('Unbanning employee:', id);
+        const success = await window.apiHelper.put(`api/Employee/unban/${id}`, {});
         if (success) {
             showToast('Unban successful!');
             fetchEmployees(keyword, page);
@@ -172,6 +191,7 @@ function showDetail(id, name, email, status) {
 
 // Initial load
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Employee page loaded, fetching employees...');
     fetchEmployees('', 1);
 });
 </script>

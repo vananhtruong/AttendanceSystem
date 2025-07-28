@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Machine UI</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .status.info {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+      .user-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 15px 0;
+        display: none;
+      }
+      .btn-capture {
+        background: #3498db;
+      }
+      .btn-retry {
+        background: #f39c12;
+      }
+      .btn-checkin {
+        background: #27ae60;
+      }
+      .btn-checkout {
+        background: #e74c3c;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧪 Test Machine UI States</h1>
+
+    <div class="test-section">
+      <h3>🎯 Test Different States</h3>
+      <button onclick="testInitialState()">Initial State</button>
+      <button onclick="testRecognitionSuccess()">Recognition Success</button>
+      <button onclick="testRecognitionFailure()">Recognition Failure</button>
+      <button onclick="testCheckInState()">Check-in State</button>
+      <button onclick="testCheckOutState()">Check-out State</button>
+      <button onclick="resetUI()">Reset UI</button>
+    </div>
+
+    <div class="test-section">
+      <h3>📱 Machine Interface</h3>
+
+      <!-- Status Display -->
+      <div id="statusDisplay" class="status info">
+        <span id="statusMessage">Ready to capture</span>
+      </div>
+
+      <!-- User Info -->
+      <div id="userInfo" class="user-info">
+        <h5>👤 Employee Information</h5>
+        <p><strong>Name:</strong> <span id="employeeName">-</span></p>
+        <p><strong>Current Shift:</strong> <span id="currentShift">-</span></p>
+        <p><strong>Shift Time:</strong> <span id="shiftTime">-</span></p>
+        <p><strong>Status:</strong> <span id="attendanceStatus">-</span></p>
+      </div>
+
+      <!-- Controls -->
+      <div id="controls">
+        <button id="captureBtn" class="btn-capture">📷 Capture Photo</button>
+        <button id="retryBtn" class="btn-retry" style="display: none">
+          🔄 Retry Recognition
+        </button>
+        <button id="checkinBtn" class="btn-checkin" style="display: none">
+          ✅ Check In
+        </button>
+        <button id="checkoutBtn" class="btn-checkout" style="display: none">
+          ❌ Check Out
+        </button>
+      </div>
+    </div>
+
+    <script>
+      function showStatus(message, type) {
+        const statusDisplay = document.getElementById("statusDisplay");
+        const statusMessage = document.getElementById("statusMessage");
+
+        statusDisplay.className = `status ${type}`;
+        statusMessage.textContent = message;
+        statusDisplay.style.display = "block";
+      }
+
+      function showUserInfo(user, schedule) {
+        document.getElementById("employeeName").textContent = user.fullName;
+        document.getElementById("currentShift").textContent =
+          schedule.shiftName;
+        document.getElementById(
+          "shiftTime"
+        ).textContent = `${schedule.shiftStart} - ${schedule.shiftEnd}`;
+        document.getElementById("attendanceStatus").textContent =
+          schedule.attendanceStatus;
+        document.getElementById("userInfo").style.display = "block";
+      }
+
+      function hideUserInfo() {
+        document.getElementById("userInfo").style.display = "none";
+      }
+
+      function showButton(buttonId) {
+        document.getElementById(buttonId).style.display = "inline-block";
+      }
+
+      function hideButton(buttonId) {
+        document.getElementById(buttonId).style.display = "none";
+      }
+
+      function testInitialState() {
+        console.log("Testing Initial State");
+
+        // Reset all buttons
+        hideButton("retryBtn");
+        hideButton("checkinBtn");
+        hideButton("checkoutBtn");
+        showButton("captureBtn");
+
+        // Hide user info
+        hideUserInfo();
+
+        // Show status
+        showStatus("Ready to capture", "info");
+      }
+
+      function testRecognitionSuccess() {
+        console.log("Testing Recognition Success");
+
+        // Mock user data
+        const user = {
+          fullName: "John Doe",
+          email: "john@example.com",
+        };
+
+        const schedule = {
+          shiftName: "Morning Shift",
+          shiftStart: "08:00",
+          shiftEnd: "12:00",
+          attendanceStatus: "Not Checked In",
+          canCheckIn: true,
+          canCheckOut: false,
+        };
+
+        // Show user info
+        showUserInfo(user, schedule);
+
+        // Show appropriate buttons
+        hideButton("retryBtn");
+        hideButton("captureBtn");
+        showButton("checkinBtn");
+        hideButton("checkoutBtn");
+
+        // Show status
+        showStatus("Welcome, John Doe!", "success");
+      }
+
+      function testRecognitionFailure() {
+        console.log("Testing Recognition Failure");
+
+        // Hide user info
+        hideUserInfo();
+
+        // Show retry button
+        hideButton("captureBtn");
+        showButton("retryBtn");
+        hideButton("checkinBtn");
+        hideButton("checkoutBtn");
+
+        // Show error status
+        showStatus(
+          "Face not recognized. Please register your face first.",
+          "error"
+        );
+      }
+
+      function testCheckInState() {
+        console.log("Testing Check-in State");
+
+        // Mock user data after check-in
+        const user = {
+          fullName: "John Doe",
+          email: "john@example.com",
+        };
+
+        const schedule = {
+          shiftName: "Morning Shift",
+          shiftStart: "08:00",
+          shiftEnd: "12:00",
+          attendanceStatus: "Checked In",
+          canCheckIn: false,
+          canCheckOut: true,
+        };
+
+        // Show user info
+        showUserInfo(user, schedule);
+
+        // Show check-out button
+        hideButton("retryBtn");
+        hideButton("captureBtn");
+        hideButton("checkinBtn");
+        showButton("checkoutBtn");
+
+        // Show status
+        showStatus("Check-in successful!", "success");
+      }
+
+      function testCheckOutState() {
+        console.log("Testing Check-out State");
+
+        // Mock user data after check-out
+        const user = {
+          fullName: "John Doe",
+          email: "john@example.com",
+        };
+
+        const schedule = {
+          shiftName: "Morning Shift",
+          shiftStart: "08:00",
+          shiftEnd: "12:00",
+          attendanceStatus: "Completed",
+          canCheckIn: false,
+          canCheckOut: false,
+        };
+
+        // Show user info
+        showUserInfo(user, schedule);
+
+        // Hide all buttons (completed)
+        hideButton("retryBtn");
+        hideButton("captureBtn");
+        hideButton("checkinBtn");
+        hideButton("checkoutBtn");
+
+        // Show status
+        showStatus("Check-out successful!", "success");
+      }
+
+      function resetUI() {
+        console.log("Resetting UI");
+        testInitialState();
+      }
+
+      // Initialize with initial state
+      window.addEventListener("load", function () {
+        testInitialState();
+      });
+    </script>
+  </body>
+</html>

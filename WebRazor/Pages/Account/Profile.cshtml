@@ -71,6 +71,9 @@
                             <div class="card profile-card text-center">
                                 <div class="card-header"><h5><i class="bi bi-camera-video me-2"></i>Face ID Registration</h5></div>
                                 <div class="card-body">
+                                    <div id="faceImageContainer" style="display: none; margin-bottom: 15px;">
+                                        <img id="faceImage" src="" alt="Face ID" style="max-width: 150px; max-height: 150px; border-radius: 8px; border: 2px solid #ddd;">
+                                    </div>
                                     <p id="faceStatusText">Checking face registration status...</p>
                                     <button class="btn btn-success" id="registerFaceBtn" style="display: none;"><i class="bi bi-camera"></i> Register Face ID</button>
                                     <button class="btn btn-danger" id="removeFaceBtn" style="display: none;"><i class="bi bi-trash"></i> Remove Face ID</button>
@@ -141,7 +144,10 @@
                         $('#userFullName').text(res.data.fullName || 'N/A');
                         $('#userEmail').text(res.data.email || 'N/A');
                         $('#userRole').text(res.data.role || 'Employee');
-                        updateFaceStatusUI(false);
+                        
+                        // Load current values into edit form
+                        $('#editFullName').val(res.data.fullName || '');
+                        $('#editEmail').val(res.data.email || '');
                     } else showAlert(res.message || 'Error loading profile', 'danger');
                 },
                 error: () => showAlert('Error loading profile', 'danger')
@@ -186,6 +192,9 @@
         }
 
         function setupFaceIdEvents() {
+            // Check face status on page load
+            checkFaceStatus();
+            
             $('#registerFaceBtn').on('click', function () {
                 $('#cameraModal').modal('show');
                 startCamera();
@@ -208,25 +217,81 @@
             });
             $('#confirmBtn').on('click', function () {
                 if (!capturedImageData) return showAlert('Please capture an image first!', 'danger');
+                
+                // Convert base64 to file
+                const base64Data = capturedImageData.split(',')[1];
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const file = new File([byteArray], 'face.jpg', { type: 'image/jpeg' });
+                
+                // Create FormData
+                const formData = new FormData();
+                formData.append('FaceImage', file);
+                
                 $.ajax({
-                    url: 'https://localhost:7117/api/face/register',
+                    url: 'https://localhost:7117/api/faceattendance/register-my-face',
                     method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' },
-                    data: JSON.stringify({ imageData: capturedImageData }),
-                    success: () => { showAlert('Face ID registered successfully!', 'success'); $('#cameraModal').modal('hide'); updateFaceStatusUI(true); },
-                    error: () => showAlert('Error registering Face ID', 'danger')
+                    headers: { 'Authorization': 'Bearer ' + getToken() },
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(res) {
+                        if (res.success) {
+                            showAlert('Face ID registered successfully!', 'success');
+                            $('#cameraModal').modal('hide');
+                            checkFaceStatus();
+                        } else {
+                            showAlert(res.message || 'Error registering Face ID', 'danger');
+                        }
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.message || 'Error registering Face ID';
+                        showAlert(errorMsg, 'danger');
+                    }
                 });
             });
             $('#retakeBtn').on('click', function () { resetCameraUI(); });
             $('#removeFaceBtn').on('click', function () {
                 if (!confirm('Are you sure you want to remove your Face ID?')) return;
                 $.ajax({
-                    url: 'https://localhost:7117/api/face/remove',
+                    url: 'https://localhost:7117/api/faceattendance/remove-my-face',
                     method: 'DELETE',
                     headers: { 'Authorization': 'Bearer ' + getToken() },
-                    success: () => { showAlert('Face ID removed successfully!', 'success'); updateFaceStatusUI(false); },
-                    error: () => showAlert('Error removing Face ID', 'danger')
+                    success: function(res) {
+                        if (res.success) {
+                            showAlert('Face ID removed successfully!', 'success');
+                            checkFaceStatus();
+                        } else {
+                            showAlert(res.message || 'Error removing Face ID', 'danger');
+                        }
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.message || 'Error removing Face ID';
+                        showAlert(errorMsg, 'danger');
+                    }
                 });
+            });
+        }
+        
+        function checkFaceStatus() {
+            $.ajax({
+                url: 'https://localhost:7117/api/faceattendance/face-status',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + getToken() },
+                success: function(res) {
+                    if (res.success) {
+                        updateFaceStatusUI(res.data.hasFaceRegistered);
+                    } else {
+                        updateFaceStatusUI(false);
+                    }
+                },
+                error: function() {
+                    updateFaceStatusUI(false);
+                }
             });
         }
 
@@ -234,11 +299,25 @@
             if (hasFaceRegistered) {
                 $('#faceStatus').html('<span class="badge bg-success">Registered</span>');
                 $('#faceStatusText').text('Your Face ID is registered.');
-                $('#registerFaceBtn').hide(); $('#removeFaceBtn').show();
+                $('#registerFaceBtn').hide(); 
+                $('#removeFaceBtn').show();
+                $('#faceImageContainer').show();
+                
+                // Load face image through proxy endpoint
+                const faceImageUrl = '/Account/Profile?handler=FaceImage&t=' + new Date().getTime();
+                $('#faceImage').attr('src', faceImageUrl);
+                
+                // Handle image load error
+                $('#faceImage').on('error', function() {
+                    $(this).hide();
+                    $('#faceImageContainer').hide();
+                });
             } else {
                 $('#faceStatus').html('<span class="badge bg-warning">Not Registered</span>');
                 $('#faceStatusText').text('Register your face ID for attendance.');
-                $('#registerFaceBtn').show(); $('#removeFaceBtn').hide();
+                $('#registerFaceBtn').show(); 
+                $('#removeFaceBtn').hide();
+                $('#faceImageContainer').hide();
             }
         }
 

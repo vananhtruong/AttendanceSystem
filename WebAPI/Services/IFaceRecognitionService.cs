@@ -2,7 +2,10 @@
 {
     public interface IFaceRecognitionService
     {
-        Task<string> RecognizeAndRecordAttendanceAsync(Stream imageStream);
+        Task<object> RecognizeAndRecordAttendanceAsync(Stream imageStream);
+        Task<bool> ProcessCheckInAsync(int userId, int workScheduleId, Stream imageStream);
+        Task<bool> ProcessCheckOutAsync(int userId, int workScheduleId, Stream imageStream);
+        Task<bool> UpdateWorkScheduleStatusAsync(int workScheduleId);
         Task RegisterUserAsync(int userId, Stream imageStream);
         Task<bool> HasFaceRegisteredAsync(int userId);
         Task RemoveFaceDataAsync(int userId);
