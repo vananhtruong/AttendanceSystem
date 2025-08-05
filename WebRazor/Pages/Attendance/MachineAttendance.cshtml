@@ -308,7 +308,16 @@ async function processFaceRecognition() {
         if (!apiResponse.ok) {
             const errorText = await apiResponse.text();
             console.error('API Error Response:', errorText);
-            throw new Error(`API Error: ${apiResponse.status} - ${errorText}`);
+            
+            // Try to parse the error response as JSON to extract the message
+            try {
+                const errorJson = JSON.parse(errorText);
+                const errorMessage = errorJson.message || 'Face recognition failed. Please try again.';
+                throw new Error(errorMessage);
+            } catch (parseError) {
+                // If parsing fails, use the raw error text
+                throw new Error(`Face recognition failed. Please try again.`);
+            }
         }
         
         const result = await apiResponse.json();
@@ -350,7 +359,7 @@ async function processFaceRecognition() {
         document.getElementById('retryBtn').style.display = 'inline-block';
         
         // Show error message
-        showStatus(`Face recognition failed: ${error.message}`, 'error');
+        showStatus(error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -408,7 +417,16 @@ async function checkIn() {
         
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`API Error: ${response.status} - ${errorText}`);
+            
+            // Try to parse the error response as JSON to extract the message
+            try {
+                const errorJson = JSON.parse(errorText);
+                const errorMessage = errorJson.message || 'Check-in failed. Please try again.';
+                throw new Error(errorMessage);
+            } catch (parseError) {
+                // If parsing fails, use a generic error message
+                throw new Error('Check-in failed. Please try again.');
+            }
         }
         
         const result = await response.json();
@@ -421,7 +439,7 @@ async function checkIn() {
         }
     } catch (error) {
         console.error('Check-in error:', error);
-        showStatus(`Check-in failed: ${error.message}`, 'error');
+        showStatus(error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -449,7 +467,16 @@ async function checkOut() {
         
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`API Error: ${response.status} - ${errorText}`);
+            
+            // Try to parse the error response as JSON to extract the message
+            try {
+                const errorJson = JSON.parse(errorText);
+                const errorMessage = errorJson.message || 'Check-out failed. Please try again.';
+                throw new Error(errorMessage);
+            } catch (parseError) {
+                // If parsing fails, use a generic error message
+                throw new Error('Check-out failed. Please try again.');
+            }
         }
         
         const result = await response.json();
@@ -462,7 +489,7 @@ async function checkOut() {
         }
     } catch (error) {
         console.error('Check-out error:', error);
-        showStatus(`Check-out failed: ${error.message}`, 'error');
+        showStatus(error.message, 'error');
     } finally {
         showLoading(false);
     }
